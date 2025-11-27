@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Twitter Video Download API - Professional Video Download Service</title>
+    <meta name="description" content="Professional Twitter Video Download API with multiple quality options, analytics, and easy integration">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">
+                <i class="fab fa-twitter"></i>
+                Twitter Video API
+            </a>
+            
+            <button class="mobile-menu-btn" id="mobileMenuBtn" title="Toggle navigation menu">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <ul class="nav-links" id="navLinks">
+                <li><a href="/playground" class="nav-link">API Playground</a></li>
+                <li><a href="/docs" class="nav-link">Documentation</a></li>
+                <li><a href="/health" class="nav-link">API Status</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h1>Twitter Video Download API</h1>
+                <p class="hero-subtitle">Professional API for downloading Twitter videos with multiple quality options, analytics, and seamless integration</p>
+                
+                <div class="hero-stats">
+                    <div class="stat">
+                        <div class="stat-number" id="totalRequests">0</div>
+                        <div class="stat-label">Total Requests</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number" id="totalVideos">0</div>
+                        <div class="stat-label">Videos Processed</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">3</div>
+                        <div class="stat-label">Quality Options</div>
+                    </div>
+                    <div class="stat">
+                        <div class="stat-number">99.9%</div>
+                        <div class="stat-label">Uptime</div>
+                    </div>
+                </div>
+
+                <div class="hero-buttons">
+                    <a href="/playground" class="btn btn-primary btn-large">
+                        <i class="fas fa-rocket"></i>
+                        Try API Playground
+                    </a>
+                    <a href="/docs" class="btn btn-secondary btn-large">
+                        <i class="fas fa-book"></i>
+                        View Documentation
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="features">
+        <div class="container">
+            <h2>Why Choose Our API?</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <i class="fas fa-bolt"></i>
+                    <h3>Lightning Fast</h3>
+                    <p>Optimized for speed with response times under 2 seconds. Built with performance in mind.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-shield-alt"></i>
+                    <h3>Reliable & Secure</h3>
+                    <p>99.9% uptime guarantee with secure API endpoints and data protection.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-database"></i>
+                    <h3>Advanced Analytics</h3>
+                    <p>Track usage with built-in analytics, IP logging, and comprehensive statistics.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-mobile-alt"></i>
+                    <h3>Multi-Quality Support</h3>
+                    <p>Download videos in HD, SD, and multiple resolutions for optimal user experience.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-code"></i>
+                    <h3>Easy Integration</h3>
+                    <p>Simple REST API with JSON responses. Get started in minutes with our documentation.</p>
+                </div>
+                <div class="feature-card">
+                    <i class="fas fa-cloud"></i>
+                    <h3>Scalable Infrastructure</h3>
+                    <p>Built to handle high traffic with automatic scaling and load balancing.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Start Section -->
+    <section class="quick-start">
+        <div class="container">
+            <h2>Get Started in Seconds</h2>
+            <div class="code-example">
+                <div class="code-tabs">
+                    <button class="code-tab active" onclick="showCode('curl')">cURL</button>
+                    <button class="code-tab" onclick="showCode('javascript')">JavaScript</button>
+                    <button class="code-tab" onclick="showCode('python')">Python</button>
+                    <button class="code-tab" onclick="showCode('php')">PHP</button>
+                </div>
+                <div class="code-content">
+                    <pre class="code-block active" id="curl-code"><code>curl "http://localhost:3000/api/download?url=https://twitter.com/user/status/123456789"</code></pre>
+                    <pre class="code-block" id="javascript-code"><code>fetch('http://localhost:3000/api/download?url=https://twitter.com/user/status/123456789')
+  .then(response => response.json())
+  .then(data => console.log(data))
+  .catch(error => console.error('Error:', error));</code></pre>
+                    <pre class="code-block" id="python-code"><code>import requests
+
+response = requests.get(
+    "http://localhost:3000/api/download",
+    params={"url": "https://twitter.com/user/status/123456789"}
+)
+data = response.json()
+print(data)</code></pre>
+                    <pre class="code-block" id="php-code"><code>$url = "http://localhost:3000/api/download?url=" . 
+       urlencode("https://twitter.com/user/status/123456789");
+$response = file_get_contents($url);
+$data = json_decode($response, true);
+print_r($data);</code></pre>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-info">
+                    <h3>Twitter Video Download API</h3>
+                    <p>Professional API service for downloading Twitter videos with advanced features and analytics.</p>
+                    <div class="social-links">
+                        <span>Developed by @m2hgamerz</span>
+                        <a href="https://t.me/m2hgamerz" target="_blank" rel="noopener">
+                            <i class="fab fa-telegram"></i>
+                            Telegram Channel
+                        </a>
+                    </div>
+                </div>
+                <div class="footer-links">
+                    <a href="/playground">API Playground</a>
+                    <a href="/docs">Documentation</a>
+                    <a href="/health">API Status</a>
+                    <a href="/api/stats">Statistics</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Twitter Video Download API. All rights reserved. Not affiliated with Twitter Inc.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const navLinks = document.getElementById('navLinks');
+
+        mobileMenuBtn.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+            mobileMenuBtn.innerHTML = navLinks.classList.contains('active') 
+                ? '<i class="fas fa-times"></i>' 
+                : '<i class="fas fa-bars"></i>';
+        });
+
+        // Close mobile menu when clicking on links
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', () => {
+                navLinks.classList.remove('active');
+                mobileMenuBtn.innerHTML = '<i class="fas fa-bars"></i>';
+            });
+        });
+
+        // Code tab functionality
+        function showCode(lang) {
+            document.querySelectorAll('.code-block').forEach(block => {
+                block.classList.remove('active');
+            });
+            document.querySelectorAll('.code-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            document.getElementById(lang + '-code').classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Load stats
+        async function loadStats() {
+            try {
+                const response = await fetch('/api/stats');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('totalRequests').textContent = 
+                        data.statistics.totalRequests.toLocaleString();
+                    document.getElementById('totalVideos').textContent = 
+                        data.statistics.totalVideos.toLocaleString();
+                }
+            } catch (error) {
+                console.log('Could not load stats:', error);
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', loadStats);
+    </script>
+</body>
+</html>

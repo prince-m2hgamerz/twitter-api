@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Documentation - Twitter Video Download API</title>
+    <meta name="description" content="Complete documentation for the Twitter Video Download API with examples and guides">
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">
+                <i class="fas fa-book"></i>
+                API Documentation
+            </a>
+            
+            <button class="mobile-menu-btn" id="mobileMenuBtn" title="Toggle navigation menu">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <ul class="nav-links" id="navLinks">
+                <li><a href="/" class="nav-link">Home</a></li>
+                <li><a href="/playground" class="nav-link">Playground</a></li>
+                <li><a href="/health" class="nav-link">API Status</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Documentation Content -->
+    <div class="container">
+        <div class="docs-layout">
+            <!-- Sidebar -->
+            <aside class="docs-sidebar">
+                <h3>API Endpoints</h3>
+                <ul class="docs-nav">
+                    <li><a href="#download" class="nav-item active">Download Video</a></li>
+                    <li><a href="#stats" class="nav-item">Get Statistics</a></li>
+                    <li><a href="#recent" class="nav-item">Recent Requests</a></li>
+                    <li><a href="#search" class="nav-item">Search Videos</a></li>
+                    <li><a href="#health" class="nav-item">Health Check</a></li>
+                </ul>
+
+                <h3>Response Format</h3>
+                <ul class="docs-nav">
+                    <li><a href="#success-response" class="nav-item">Success Response</a></li>
+                    <li><a href="#error-response" class="nav-item">Error Response</a></li>
+                </ul>
+
+                <h3>Quick Links</h3>
+                <ul class="docs-nav">
+                    <li><a href="/playground" class="nav-item">API Playground</a></li>
+                    <li><a href="/health" class="nav-item">API Status</a></li>
+                    <li><a href="/api/stats" class="nav-item">Live Statistics</a></li>
+                </ul>
+            </aside>
+
+            <!-- Main Content -->
+            <main class="docs-content">
+                <!-- Introduction -->
+                <section id="introduction">
+                    <h1>API Documentation</h1>
+                    <p class="hero-subtitle">Complete documentation for the Twitter Video Download API. Learn how to integrate our service into your applications with detailed examples and guides.</p>
+                    
+                    <div class="info-box">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>Base URL:</strong> <code>http://localhost:3000</code><br>
+                            <strong>Response Format:</strong> JSON<br>
+                            <strong>Authentication:</strong> None required<br>
+                            <strong>Rate Limiting:</strong> None currently applied
+                        </div>
+                    </div>
+
+                    <div class="info-box info-box-accent">
+                        <i class="fas fa-user"></i>
+                        <div>
+                            <strong>Author:</strong> @m2hgamerz<br>
+                            <strong>Telegram:</strong> <a href="https://t.me/m2hgamerz" target="_blank" rel="noopener">https://t.me/m2hgamerz</a><br>
+                            <strong>Support:</strong> Contact via Telegram for API support
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Download Video Endpoint -->
+                <section id="download" class="endpoint-section">
+                    <h2><i class="fas fa-download"></i> Download Video</h2>
+                    <p>Get download links for Twitter videos with multiple quality options. This endpoint extracts video information and provides direct download links.</p>
+                    
+                    <div class="endpoint-info">
+                        <span class="method get">GET</span>
+                        <code class="endpoint-url">/api/download?url=TWITTER_URL</code>
+                    </div>
+
+                    <h3>Parameters</h3>
+                    <div class="parameters">
+                        <div class="parameter">
+                            <strong>url</strong> <span class="required">required</span>
+                            <p>The Twitter/X URL of the video tweet you want to download.</p>
+                            <code>https://twitter.com/user/status/123456789</code>
+                            <p><small><strong>Note:</strong> The URL must be a valid Twitter status URL containing a video.</small></p>
+                        </div>
+                    </div>
+
+                    <h3>Example Request</h3>
+                    <pre class="code-block"><code>curl -X GET "http://localhost:3000/api/download?url=https://twitter.com/ImRo45/status/1925494336931713129"</code></pre>
+
+                    <h3>Success Response</h3>
+                    <pre class="code-block"><code>{
+  "success": true,
+  "twitterUrl": "https://twitter.com/ImRo45/status/1925494336931713129",
+  "tweetId": "1925494336931713129",
+  "tweetInfo": {
+    "author": "ImRo45",
+    "text": "Master the Moment with TCL. 🌟✨ Bring every match to life...",
+    "date": "22-05-2025 10:09:58",
+    "tweetUrl": "https://twitter.com/ImRo45/status/1925494336931713129"
+  },
+  "downloadLinks": [
+    {
+      "url": "https://twitsave.com/download?file=...",
+      "quality": "hd",
+      "resolution": "1688x720",
+      "type": "mp4",
+      "source": "twitsave"
+    },
+    {
+      "url": "https://twitsave.com/download?file=...",
+      "quality": "sd",
+      "resolution": "844x360",
+      "type": "mp4",
+      "source": "twitsave"
+    }
+  ],
+  "totalVideosFound": 2,
+  "thumbnail": "https://pbs.twimg.com/ext_tw_video_thumb/1925494211094163456/pu/img/pAfHBEB5He89AdwI.jpg",
+  "videoPreview": "https://video.twimg.com/ext_tw_video/1925494211094163456/pu/vid/avc1/1688x720/JK1inHIruGSfnRRy.mp4?tag=12",
+  "author": "@m2hgamerz",
+  "telegram": "https://t.me/m2hgamerz",
+  "apiVersion": "2.0"
+}</code></pre>
+
+                    <h3>Response Fields</h3>
+                    <div class="parameters">
+                        <div class="parameter">
+                            <strong>success</strong>
+                            <p>Indicates if the request was successful (boolean).</p>
+                        </div>
+                        <div class="parameter">
+                            <strong>twitterUrl</strong>
+                            <p>The original Twitter URL that was processed.</p>
+                        </div>
+                        <div class="parameter">
+                            <strong>tweetInfo</strong>
+                            <p>Object containing tweet metadata (author, text, date, etc.).</p>
+                        </div>
+                        <div class="parameter">
+                            <strong>downloadLinks</strong>
+                            <p>Array of available download links with quality and resolution information.</p>
+                        </div>
+                        <div class="parameter">
+                            <strong>totalVideosFound</strong>
+                            <p>Number of video quality options available.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Statistics Endpoint -->
+                <section id="stats" class="endpoint-section">
+                    <h2><i class="fas fa-chart-bar"></i> Get Statistics</h2>
+                    <p>Retrieve API usage statistics, analytics, and system information.</p>
+                    
+                    <div class="endpoint-info">
+                        <span class="method get">GET</span>
+                        <code class="endpoint-url">/api/stats</code>
+                    </div>
+
+                    <h3>Example Request</h3>
+                    <pre class="code-block"><code>curl -X GET "http://localhost:3000/api/stats"</code></pre>
+
+                    <h3>Response</h3>
+                    <pre class="code-block"><code>{
+  "success": true,
+  "statistics": {
+    "totalRequests": 150,
+    "totalVideos": 45,
+    "popularVideos": [
+      {
+        "tweet_id": "1925494336931713129",
+        "author": "ImRo45",
+        "total_downloads": 25
+      }
+    ],
+    "deviceStats": [
+      {
+        "device_type": "Mobile",
+        "count": 80
+      },
+      {
+        "device_type": "Desktop",
+        "count": 70
+      }
+    ]
+  },
+  "author": "@m2hgamerz",
+  "telegram": "https://t.me/m2hgamerz"
+}</code></pre>
+                </section>
+
+                <!-- Recent Requests Endpoint -->
+                <section id="recent" class="endpoint-section">
+                    <h2><i class="fas fa-history"></i> Recent Requests</h2>
+                    <p>Get the most recent API requests with detailed information including IP addresses and device details.</p>
+                    
+                    <div class="endpoint-info">
+                        <span class="method get">GET</span>
+                        <code class="endpoint-url">/api/requests/recent</code>
+                    </div>
+
+                    <h3>Example Request</h3>
+                    <pre class="code-block"><code>curl -X GET "http://localhost:3000/api/requests/recent"</code></pre>
+
+                    <h3>Response</h3>
+                    <pre class="code-block"><code>{
+  "success": true,
+  "recentRequests": [
+    {
+      "ip_address": "192.168.1.1",
+      "device_type": "Desktop",
+      "browser": "Chrome",
+      "platform": "Windows",
+      "twitter_url": "https://twitter.com/ImRo45/status/1925494336931713129",
+      "timestamp": "2024-01-15 10:30:00"
+    }
+  ],
+  "total": 50,
+  "author": "@m2hgamerz",
+  "telegram": "https://t.me/m2hgamerz"
+}</code></pre>
+                </section>
+
+                <!-- Search Videos Endpoint -->
+                <section id="search" class="endpoint-section">
+                    <h2><i class="fas fa-search"></i> Search Videos</h2>
+                    <p>Search through the stored video database by author or other criteria.</p>
+                    
+                    <div class="endpoint-info">
+                        <span class="method get">GET</span>
+                        <code class="endpoint-url">/api/videos/search?author=USERNAME&limit=20</code>
+                    </div>
+
+                    <h3>Parameters</h3>
+                    <div class="parameters">
+                        <div class="parameter">
+                            <strong>author</strong> <span class="optional">optional</span>
+                            <p>Filter results by tweet author username.</p>
+                        </div>
+                        <div class="parameter">
+                            <strong>limit</strong> <span class="optional">optional</span>
+                            <p>Number of results to return. Default: 20, Maximum: 100.</p>
+                        </div>
+                    </div>
+
+                    <h3>Example Request</h3>
+                    <pre class="code-block"><code>curl -X GET "http://localhost:3000/api/videos/search?author=ImRo45&limit=10"</code></pre>
+                </section>
+
+                <!-- Health Check Endpoint -->
+                <section id="health" class="endpoint-section">
+                    <h2><i class="fas fa-heartbeat"></i> Health Check</h2>
+                    <p>Check API status, database connectivity, and service health.</p>
+                    
+                    <div class="endpoint-info">
+                        <span class="method get">GET</span>
+                        <code class="endpoint-url">/health</code>
+                    </div>
+
+                    <h3>Example Request</h3>
+                    <pre class="code-block"><code>curl -X GET "http://localhost:3000/health"</code></pre>
+
+                    <h3>Response</h3>
+                    <pre class="code-block"><code>{
+  "status": "OK",
+  "timestamp": "2024-01-15T10:30:00.000Z",
+  "service": "Twitter Video Download API",
+  "database": {
+    "totalRequests": 150,
+    "path": "./twitter_videos.db"
+  },
+  "author": "@m2hgamerz",
+  "telegram": "https://t.me/m2hgamerz"
+}</code></pre>
+                </section>
+
+                <!-- Success Response Format -->
+                <section id="success-response" class="response-section">
+                    <h2><i class="fas fa-check-circle"></i> Success Response Format</h2>
+                    <p>All successful API responses follow this standard format:</p>
+                    <pre class="code-block"><code>{
+  "success": true,
+  "data": {
+    // Endpoint-specific data
+  },
+  "author": "@m2hgamerz",
+  "telegram": "https://t.me/m2hgamerz"
+}</code></pre>
+                </section>
+
+                <!-- Error Response Format -->
+                <section id="error-response" class="response-section">
+                    <h2><i class="fas fa-exclamation-circle"></i> Error Response Format</h2>
+                    <p>All error responses follow this standard format with appropriate HTTP status codes:</p>
+                    <pre class="code-block"><code>{
+  "success": false,
+  "error": "Error message description",
+  "code": "ERROR_CODE",
+  "author": "@m2hgamerz",
+  "telegram": "https://t.me/m2hgamerz"
+}</code></pre>
+
+                    <h3>Common Error Codes</h3>
+                    <div class="parameters">
+                        <div class="parameter">
+                            <strong>400</strong>
+                            <p>Bad Request - Invalid parameters or missing required fields.</p>
+                        </div>
+                        <div class="parameter">
+                            <strong>404</strong>
+                            <p>Not Found - Tweet not found or no video available.</p>
+                        </div>
+                        <div class="parameter">
+                            <strong>500</strong>
+                            <p>Internal Server Error - API service issue.</p>
+                        </div>
+                        <div class="parameter">
+                            <strong>503</strong>
+                            <p>Service Unavailable - Third-party service down.</p>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Best Practices -->
+                <section class="response-section">
+                    <h2><i class="fas fa-star"></i> Best Practices</h2>
+                    <div class="parameters">
+                        <div class="parameter">
+                            <strong>Error Handling</strong>
+                            <p>Always check the <code>success</code> field and handle errors gracefully in your application.</p>
+                        </div>
+                        <div class="parameter">
+                            <strong>URL Validation</strong>
+                            <p>Ensure Twitter URLs are valid and contain video content before making API requests.</p>
+                        </div>
+                        <div class="parameter">
+                            <strong>Rate Limiting</strong>
+                            <p>While no strict limits are enforced, avoid making excessive requests in short periods.</p>
+                        </div>
+                        <div class="parameter">
+                            <strong>Data Caching</strong>
+                            <p>Consider caching successful responses to improve performance and reduce API calls.</p>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-info">
+                    <h3>Twitter Video Download API</h3>
+                    <p>Professional API service for downloading Twitter videos with advanced analytics and multiple quality options.</p>
+                    <div class="social-links">
+                        <span>Developed by @m2hgamerz</span>
+                        <a href="https://t.me/m2hgamerz" target="_blank" rel="noopener">
+                            <i class="fab fa-telegram"></i>
+                            Telegram Channel
+                        </a>
+                    </div>
+                </div>
+                <div class="footer-links">
+                    <a href="/playground">API Playground</a>
+                    <a href="/docs">Documentation</a>
+                    <a href="/health">API Status</a>
+                    <a href="/api/stats">Statistics</a>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 Twitter Video Download API. All rights reserved. Not affiliated with Twitter Inc.</p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Mobile menu toggle
+        const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+        const navLinks = document.getElementById('navLinks');
+
+        mobileMenuBtn.addEventListener('click', () => {
+            navLinks.classList.toggle('active');
+            mobileMenuBtn.innerHTML = navLinks.classList.contains('active') 
+                ? '<i class="fas fa-times"></i>' 
+                : '<i class="fas fa-bars"></i>';
+        });
+
+        // Smooth scrolling and active navigation
+        document.querySelectorAll('.docs-nav a').forEach(link => {
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetElement = document.querySelector(targetId);
+                
+                if (targetElement) {
+                    targetElement.scrollIntoView({ 
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+                
+            });
+        });
+
+        // Update active nav based on scroll position
+        window.addEventListener('scroll', function() {
+            const sections = document.querySelectorAll('.endpoint-section, .response-section');
+            const navLinks = document.querySelectorAll('.docs-nav .nav-item');
+            
+            let currentSection = '';
+            
+            sections.forEach(section => {
+                const sectionTop = section.offsetTop - 100;
+                if (window.scrollY >= sectionTop) {
+                    currentSection = section.getAttribute('id');
+                }
+            });
+            
+            navLinks.forEach(link => {
+                link.classList.remove('active');
+                if (link.getAttribute('href') === '#' + currentSection) {
+                    link.classList.add('active');
+                }
+            });
+        });
+
+        // Add copy functionality to code blocks
+        document.querySelectorAll('.code-block').forEach(block => {
+            block.addEventListener('click', function() {
+                const text = this.textContent;
+                navigator.clipboard.writeText(text).then(() => {
+                    // Show temporary copy feedback
+                    const originalBorder = this.style.borderColor;
+                    this.style.borderColor = 'var(--success)';
+                    setTimeout(() => {
+                        this.style.borderColor = originalBorder;
+                    }, 1000);
+                });
+            });
+        });
+    </script>
+</body>
+</html>

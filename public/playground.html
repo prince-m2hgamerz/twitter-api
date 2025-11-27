@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Playground - Twitter Video Download API</title>
+    <meta name="description" content="Test and experiment with the Twitter Video Download API in real-time">
+    <link rel="stylesheet" href="playground.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-logo">
+                <i class="fas fa-code"></i>
+                API Playground
+            </a>
+            
+            <button class="mobile-menu-btn" id="mobileMenuBtn" title="Toggle navigation menu">
+                <i class="fas fa-bars"></i>
+            </button>
+
+            <ul class="nav-links" id="navLinks">
+                <li><a href="/" class="nav-link">Home</a></li>
+                <li><a href="/docs" class="nav-link">Documentation</a></li>
+                <li><a href="/health" class="nav-link">API Status</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container">
+        <header class="playground-header">
+            <h1>API Playground</h1>
+            <p class="hero-subtitle">Test the Twitter Video Download API in real-time with instant results</p>
+        </header>
+
+        <div class="playground-layout">
+            <!-- Input Section -->
+            <div class="input-section">
+                <h2><i class="fas fa-paper-plane"></i> Request</h2>
+                
+                <div class="form-group">
+                    <label for="twitterUrl">Twitter URL</label>
+                    <input type="text" id="twitterUrl" 
+                           placeholder="https://twitter.com/user/status/123456789" 
+                           class="form-input">
+                    <small style="color: var(--text-muted); margin-top: 0.5rem; display: block;">
+                        Enter a valid Twitter/X URL containing a video
+                    </small>
+                </div>
+                
+                <div class="endpoint-selector">
+                    <label>API Endpoint</label>
+                    <div class="endpoint-buttons">
+                        <button class="endpoint-btn active" data-endpoint="/api/download">
+                            <i class="fas fa-download"></i> Download
+                        </button>
+                        <button class="endpoint-btn" data-endpoint="/api/stats">
+                            <i class="fas fa-chart-bar"></i> Statistics
+                        </button>
+                        <button class="endpoint-btn" data-endpoint="/api/requests/recent">
+                            <i class="fas fa-history"></i> Recent Requests
+                        </button>
+                    </div>
+                </div>
+
+                <button id="sendRequest" class="btn btn-primary btn-large" style="width: 100%;">
+                    <i class="fas fa-paper-plane"></i>
+                    Send API Request
+                </button>
+
+                <div style="margin-top: 1.5rem; padding: 1rem; background: var(--background); border-radius: 0.75rem;">
+                    <h4 style="margin-bottom: 0.5rem; color: var(--primary);">
+                        <i class="fas fa-lightbulb"></i> Pro Tip
+                    </h4>
+                    <p style="font-size: 0.875rem; margin: 0; color: var(--text-secondary);">
+                        Use the examples below to quickly test different API endpoints and see the response format.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Response Section -->
+            <div class="response-section">
+                <h2><i class="fas fa-reply"></i> Response</h2>
+                
+                <div class="response-info">
+                    <div class="status-indicator">
+                        Status: <span id="statusCode">-</span>
+                    </div>
+                    <div class="response-time">
+                        Time: <span id="responseTime">-</span>ms
+                    </div>
+                </div>
+
+                <div class="response-container">
+                    <pre id="responseOutput" class="response-output">{
+  "message": "Your API response will appear here...",
+  "instructions": "Enter a Twitter URL and click 'Send API Request'"
+}</pre>
+                </div>
+                
+                <!-- Video Preview -->
+                <div class="video-preview" id="videoPreview">
+                    <h3><i class="fas fa-play-circle"></i> Video Preview</h3>
+                    <div class="preview-container">
+                        <img id="previewThumbnail" class="preview-thumbnail" alt="Video thumbnail">
+                        <div class="preview-info">
+                            <h4 id="previewAuthor">Author Name</h4>
+                            <p id="previewText">Tweet content will appear here...</p>
+                            <div class="download-links" id="downloadLinks">
+                                <!-- Download links will be dynamically added -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Code Examples -->
+        <div class="code-examples">
+            <h2><i class="fas fa-code"></i> Code Examples</h2>
+            <p style="text-align: center; margin-bottom: 2rem; color: var(--text-secondary);">
+                Integrate the API into your application with these ready-to-use code snippets
+            </p>
+            
+            <div class="example-tabs">
+                <button class="example-tab active" data-example="curl">cURL</button>
+                <button class="example-tab" data-example="javascript">JavaScript</button>
+                <button class="example-tab" data-example="python">Python</button>
+                <button class="example-tab" data-example="php">PHP</button>
+                <button class="example-tab" data-example="nodejs">Node.js</button>
+            </div>
+            
+            <div class="example-content">
+                <pre class="example-code" id="curl-example"><code># Download Twitter Video
+curl -X GET "http://localhost:3000/api/download?url=TWITTER_URL"
+
+# Get API Statistics
+curl -X GET "http://localhost:3000/api/stats"
+
+# Get Recent Requests
+curl -X GET "http://localhost:3000/api/requests/recent"</code></pre>
+
+                <pre class="example-code" id="javascript-example"><code>// Download Twitter Video
+async function downloadTwitterVideo(url) {
+  try {
+    const response = await fetch(`http://localhost:3000/api/download?url=${encodeURIComponent(url)}`);
+    const data = await response.json();
+    console.log(data);
+    return data;
+  } catch (error) {
+    console.error('Error:', error);
+  }
+}
+
+// Example usage
+downloadTwitterVideo('TWITTER_URL');</code></pre>
+
+                <pre class="example-code" id="python-example"><code>import requests
+
+def download_twitter_video(url):
+    try:
+        response = requests.get(
+            "http://localhost:3000/api/download",
+            params={"url": url}
+        )
+        data = response.json()
+        print(data)
+        return data
+    except Exception as e:
+        print(f"Error: {e}")
+
+# Example usage
+download_twitter_video("TWITTER_URL")</code></pre>
+
+                <pre class="example-code" id="php-example"><code>&lt;?php
+
+function downloadTwitterVideo($url) {
+    $api_url = "http://localhost:3000/api/download?url=" . urlencode($url);
+    $response = file_get_contents($api_url);
+    $data = json_decode($response, true);
+    return $data;
+}
+
+// Example usage
+$result = downloadTwitterVideo("TWITTER_URL");
+print_r($result);
+
+?&gt;</code></pre>
+
+                <pre class="example-code" id="nodejs-example"><code>const axios = require('axios');
+
+async function downloadTwitterVideo(url) {
+  try {
+    const response = await axios.get('http://localhost:3000/api/download', {
+      params: { url }
+    });
+    console.log(response.data);
+    return response.data;
+  } catch (error) {
+    console.error('Error:', error.message);
+  }
+}
+
+// Example usage
+downloadTwitterVideo('TWITTER_URL');</code></pre>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-info">
+                    <h3>Twitter Video Download API</h3>
+                    <p>Professional API service for downloading Twitter videos with advanced features.</p>
+                    <div class="social-links">
+                        <span>Developed by @m2hgamerz</span>
+                        <a href="https://t.me/m2hgamerz" target="_blank" rel="noopener">
+                            <i class="fab fa-telegram"></i>
+                            Telegram Channel
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+    // Mobile menu toggle
+    const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+    const navLinks = document.getElementById('navLinks');
+
+    mobileMenuBtn.addEventListener('click', () => {
+        navLinks.classList.toggle('active');
+        mobileMenuBtn.innerHTML = navLinks.classList.contains('active') 
+            ? '<i class="fas fa-times"></i>' 
+            : '<i class="fas fa-bars"></i>';
+    });
+
+    // API functionality
+    let currentEndpoint = '/api/download';
+
+    // Endpoint selection
+    document.querySelectorAll('.endpoint-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.endpoint-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentEndpoint = this.dataset.endpoint;
+            updateCodeExamples();
+        });
+    });
+
+    // Example tabs
+    document.querySelectorAll('.example-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.example-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            document.querySelectorAll('.example-code').forEach(code => {
+                code.style.display = 'none';
+            });
+            
+            document.getElementById(this.dataset.example + '-example').style.display = 'block';
+        });
+    });
+
+    // Send request
+    document.getElementById('sendRequest').addEventListener('click', async function() {
+        const url = document.getElementById('twitterUrl').value;
+        const sendBtn = this;
+        const responseOutput = document.getElementById('responseOutput');
+        
+        if (!url && currentEndpoint === '/api/download') {
+            showError('Please enter a Twitter URL');
+            return;
+        }
+
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending Request...';
+        
+        // Show loading state
+        responseOutput.classList.add('loading');
+        responseOutput.textContent = 'Loading...';
+
+        const startTime = performance.now();
+        
+        try {
+            let apiUrl = `http://localhost:3000${currentEndpoint}`;
+            if (currentEndpoint === '/api/download' && url) {
+                apiUrl += `?url=${encodeURIComponent(url)}`;
+            }
+
+            const response = await fetch(apiUrl);
+            const endTime = performance.now();
+            const responseTime = Math.round(endTime - startTime);
+            
+            const data = await response.json();
+
+            // Update response info
+            document.getElementById('statusCode').textContent = response.status;
+            document.getElementById('statusCode').className = response.status === 200 ? 'status-success' : 'status-error';
+            document.getElementById('responseTime').textContent = responseTime;
+
+            // Display formatted response
+            responseOutput.classList.remove('loading');
+            responseOutput.textContent = JSON.stringify(data, null, 2);
+            
+            // Add syntax highlighting
+            applyJSONSyntaxHighlighting(responseOutput);
+
+            // Show video preview if it's a download response
+            if (currentEndpoint === '/api/download' && data.success && data.downloadLinks) {
+                showVideoPreview(data);
+            } else {
+                document.getElementById('videoPreview').style.display = 'none';
+            }
+
+        } catch (error) {
+            responseOutput.classList.remove('loading');
+            responseOutput.textContent = JSON.stringify({
+                error: 'Request failed: ' + error.message
+            }, null, 2);
+            
+            document.getElementById('statusCode').textContent = 'Error';
+            document.getElementById('statusCode').className = 'status-error';
+            document.getElementById('videoPreview').style.display = 'none';
+            
+            // Apply syntax highlighting to error response too
+            applyJSONSyntaxHighlighting(responseOutput);
+        } finally {
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Send API Request';
+        }
+    });
+
+    function showVideoPreview(data) {
+        const preview = document.getElementById('videoPreview');
+        preview.style.display = 'block';
+
+        if (data.thumbnail) {
+            document.getElementById('previewThumbnail').src = data.thumbnail;
+            document.getElementById('previewThumbnail').style.display = 'block';
+        } else {
+            document.getElementById('previewThumbnail').style.display = 'none';
+        }
+        
+        document.getElementById('previewAuthor').textContent = data.tweetInfo?.author || 'Unknown Author';
+        document.getElementById('previewText').textContent = data.tweetInfo?.text || 'No tweet text available';
+
+        const downloadLinks = document.getElementById('downloadLinks');
+        downloadLinks.innerHTML = '';
+
+        if (data.downloadLinks && data.downloadLinks.length > 0) {
+            data.downloadLinks.forEach(link => {
+                const linkElement = document.createElement('a');
+                linkElement.href = link.url;
+                linkElement.className = 'download-link';
+                linkElement.target = '_blank';
+                linkElement.rel = 'noopener';
+                linkElement.innerHTML = `
+                    <i class="fas fa-download"></i>
+                    Download ${link.quality.toUpperCase()} (${link.resolution})
+                `;
+                downloadLinks.appendChild(linkElement);
+            });
+        } else {
+            downloadLinks.innerHTML = '<p style="color: var(--text-muted); font-size: 0.875rem;">No download links available</p>';
+        }
+    }
+
+    function showError(message) {
+        // Create a nice toast notification instead of alert
+        const toast = document.createElement('div');
+        toast.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--error);
+            color: white;
+            padding: 1rem 1.5rem;
+            border-radius: 0.75rem;
+            z-index: 1000;
+            animation: slideInRight 0.3s ease;
+            max-width: 300px;
+            box-shadow: 0 10px 25px rgba(239, 68, 68, 0.3);
+        `;
+        toast.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i class="fas fa-exclamation-circle"></i>
+                <span>${message}</span>
+            </div>
+        `;
+        
+        document.body.appendChild(toast);
+        
+        setTimeout(() => {
+            toast.style.animation = 'slideOutRight 0.3s ease';
+            setTimeout(() => {
+                document.body.removeChild(toast);
+            }, 300);
+        }, 3000);
+    }
+
+    function updateCodeExamples() {
+        const url = document.getElementById('twitterUrl').value || 'TWITTER_URL';
+        
+        document.querySelectorAll('.example-code').forEach(pre => {
+            let code = pre.textContent;
+            code = code.replace(/TWITTER_URL/g, url);
+            pre.textContent = code;
+        });
+    }
+
+    // JSON Syntax Highlighting
+    function applyJSONSyntaxHighlighting(element) {
+        const text = element.textContent;
+        if (!text) return;
+
+        try {
+            // Basic JSON syntax highlighting
+            let highlighted = text
+                .replace(/"(\w+)":/g, '<span class="key">"$1":</span>')
+                .replace(/: "([^"]*)"/g, ': <span class="string">"$1"</span>')
+                .replace(/: (true|false)/g, ': <span class="boolean">$1</span>')
+                .replace(/: (null)/g, ': <span class="null">$1</span>')
+                .replace(/: (\d+)/g, ': <span class="number">$1</span>')
+                .replace(/: ([\d\.]+)/g, ': <span class="number">$1</span>');
+
+            element.innerHTML = highlighted;
+        } catch (e) {
+            console.error('Error applying syntax highlighting:', e);
+        }
+    }
+
+    // Add copy to clipboard functionality
+    function addCopyButton() {
+        const responseContainer = document.querySelector('.response-container');
+        const copyButton = document.createElement('button');
+        copyButton.className = 'copy-button';
+        copyButton.innerHTML = '<i class="fas fa-copy"></i> Copy';
+        copyButton.title = 'Copy response to clipboard';
+        
+        copyButton.addEventListener('click', async () => {
+            const responseOutput = document.getElementById('responseOutput');
+            try {
+                await navigator.clipboard.writeText(responseOutput.textContent);
+                
+                // Visual feedback
+                copyButton.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                copyButton.style.background = 'var(--success)';
+                copyButton.style.borderColor = 'var(--success)';
+                
+                setTimeout(() => {
+                    copyButton.innerHTML = '<i class="fas fa-copy"></i> Copy';
+                    copyButton.style.background = '';
+                    copyButton.style.borderColor = '';
+                }, 2000);
+            } catch (err) {
+                showError('Failed to copy to clipboard');
+            }
+        });
+        
+        responseContainer.style.position = 'relative';
+        responseContainer.appendChild(copyButton);
+    }
+
+    // Initialize code examples and copy button
+    document.addEventListener('DOMContentLoaded', function() {
+        updateCodeExamples();
+        addCopyButton();
+        
+        // Add CSS for toast animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideInRight {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            
+            @keyframes slideOutRight {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    });
+
+    // Update code examples when URL changes
+    document.getElementById('twitterUrl').addEventListener('input', updateCodeExamples);
+</script>
+</body>
+</html>
