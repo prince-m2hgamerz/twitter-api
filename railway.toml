@@ -1,0 +1,11 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "npm start"
+restartPolicyType = "ON_FAILURE"
+
+[[services]]
+name = "web"
+[[services.ports]]
+port = 3000

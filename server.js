@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
 const cheerio = require('cheerio');
-const sqlite3 = require('sqlite3').verbose();
+const { Pool } = require('pg');
 const path = require('path');
 const userAgent = require('user-agents');
 
@@ -15,64 +15,72 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// SQLite Database Setup
-const dbPath = path.join(__dirname, 'twitter_videos.db');
-const db = new sqlite3.Database(dbPath);
+// PostgreSQL Database Setup
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 // Initialize database tables
-db.serialize(() => {
-  db.run(`CREATE TABLE IF NOT EXISTS requests (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    ip_address TEXT,
-    user_agent TEXT,
-    device_type TEXT,
-    browser TEXT,
-    platform TEXT,
-    twitter_url TEXT,
-    endpoint TEXT,
-    timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
+async function initializeDatabase() {
+  try {
+    const client = await pool.connect();
+    
+    // Create requests table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS requests (
+        id SERIAL PRIMARY KEY,
+        ip_address TEXT,
+        user_agent TEXT,
+        device_type TEXT,
+        browser TEXT,
+        platform TEXT,
+        twitter_url TEXT,
+        endpoint TEXT,
+        timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-  db.run(`CREATE TABLE IF NOT EXISTS videos (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tweet_id TEXT UNIQUE,
-    author TEXT,
-    tweet_text TEXT,
-    tweet_date TEXT,
-    thumbnail_url TEXT,
-    total_downloads INTEGER DEFAULT 0,
-    first_fetched DATETIME DEFAULT CURRENT_TIMESTAMP,
-    last_fetched DATETIME DEFAULT CURRENT_TIMESTAMP
-  )`);
+    // Create videos table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS videos (
+        id SERIAL PRIMARY KEY,
+        tweet_id TEXT UNIQUE,
+        author TEXT,
+        tweet_text TEXT,
+        tweet_date TEXT,
+        thumbnail_url TEXT,
+        total_downloads INTEGER DEFAULT 0,
+        first_fetched TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        last_fetched TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
 
-  db.run(`CREATE TABLE IF NOT EXISTS download_links (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    tweet_id TEXT,
-    download_url TEXT,
-    direct_url TEXT,
-    quality TEXT,
-    resolution TEXT,
-    type TEXT,
-    source TEXT,
-    fetch_count INTEGER DEFAULT 0,
-    FOREIGN KEY (tweet_id) REFERENCES videos (tweet_id)
-  )`);
+    // Create download_links table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS download_links (
+        id SERIAL PRIMARY KEY,
+        tweet_id TEXT,
+        download_url TEXT,
+        direct_url TEXT,
+        quality TEXT,
+        resolution TEXT,
+        type TEXT,
+        source TEXT,
+        fetch_count INTEGER DEFAULT 0,
+        FOREIGN KEY (tweet_id) REFERENCES videos (tweet_id) ON DELETE CASCADE
+      )
+    `);
 
-  console.log('Database initialized successfully');
-});
+    console.log('PostgreSQL database initialized successfully');
+    client.release();
+  } catch (error) {
+    console.error('Database initialization error:', error);
+  }
+}
 
-// Routes
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-app.get('/playground', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'playground.html'));
-});
-
-app.get('/docs', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'docs.html'));
-});
+// Initialize database on startup
+initializeDatabase();
 
 // Function to get client IP and device details
 function getClientInfo(req) {
@@ -107,7 +115,7 @@ function getClientInfo(req) {
   else if (userAgent.includes('iOS')) platform = 'iOS';
 
   return {
-    ip: ip.split(',')[0].trim(), // Handle multiple IPs in x-forwarded-for
+    ip: ip ? ip.split(',')[0].trim() : 'unknown',
     userAgent,
     deviceType,
     browser,
@@ -116,25 +124,27 @@ function getClientInfo(req) {
 }
 
 // Function to log request to database
-function logRequest(req, twitterUrl, endpoint) {
+async function logRequest(req, twitterUrl, endpoint) {
   const clientInfo = getClientInfo(req);
   
-  const stmt = db.prepare(`
-    INSERT INTO requests (ip_address, user_agent, device_type, browser, platform, twitter_url, endpoint)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `);
-  
-  stmt.run(
-    clientInfo.ip,
-    clientInfo.userAgent,
-    clientInfo.deviceType,
-    clientInfo.browser,
-    clientInfo.platform,
-    twitterUrl,
-    endpoint
-  );
-  
-  stmt.finalize();
+  try {
+    const query = `
+      INSERT INTO requests (ip_address, user_agent, device_type, browser, platform, twitter_url, endpoint)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `;
+    
+    await pool.query(query, [
+      clientInfo.ip,
+      clientInfo.userAgent,
+      clientInfo.deviceType,
+      clientInfo.browser,
+      clientInfo.platform,
+      twitterUrl,
+      endpoint
+    ]);
+  } catch (error) {
+    console.error('Error logging request:', error);
+  }
 }
 
 // Headers for Twitsave with random user agents
@@ -241,51 +251,63 @@ function extractDownloadLinksFromTwitsave(html, twitterUrl) {
   }
 }
 
-// Function to store video data in database
-function storeVideoData(tweetId, result) {
-  return new Promise((resolve, reject) => {
+// Function to store video data in PostgreSQL database
+async function storeVideoData(tweetId, result) {
+  try {
     // Check if video already exists
-    db.get('SELECT * FROM videos WHERE tweet_id = ?', [tweetId], (err, row) => {
-      if (err) {
-        reject(err);
-        return;
-      }
+    const existingVideo = await pool.query(
+      'SELECT * FROM videos WHERE tweet_id = $1',
+      [tweetId]
+    );
 
-      if (row) {
-        // Update existing video
-        db.run(
-          'UPDATE videos SET total_downloads = total_downloads + 1, last_fetched = CURRENT_TIMESTAMP WHERE tweet_id = ?',
-          [tweetId]
+    if (existingVideo.rows.length > 0) {
+      // Update existing video
+      await pool.query(
+        'UPDATE videos SET total_downloads = total_downloads + 1, last_fetched = CURRENT_TIMESTAMP WHERE tweet_id = $1',
+        [tweetId]
+      );
+
+      // Update download links fetch count
+      for (const link of result.downloadLinks) {
+        await pool.query(
+          'UPDATE download_links SET fetch_count = fetch_count + 1 WHERE tweet_id = $1 AND download_url = $2',
+          [tweetId, link.url]
         );
-
-        // Update download links fetch count
-        result.downloadLinks.forEach(link => {
-          db.run(
-            'UPDATE download_links SET fetch_count = fetch_count + 1 WHERE tweet_id = ? AND download_url = ?',
-            [tweetId, link.url]
-          );
-        });
-      } else {
-        // Insert new video
-        db.run(
-          `INSERT INTO videos (tweet_id, author, tweet_text, tweet_date, thumbnail_url, total_downloads)
-           VALUES (?, ?, ?, ?, ?, 1)`,
-          [tweetId, result.tweetInfo.author, result.tweetInfo.text, result.tweetInfo.date, result.thumbnail]
-        );
-
-        // Insert download links
-        result.downloadLinks.forEach(link => {
-          db.run(
-            `INSERT INTO download_links (tweet_id, download_url, direct_url, quality, resolution, type, source, fetch_count)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
-            [tweetId, link.url, link.directUrl, link.quality, link.resolution, link.type, link.source]
-          );
-        });
       }
-      resolve();
-    });
-  });
+    } else {
+      // Insert new video
+      await pool.query(
+        `INSERT INTO videos (tweet_id, author, tweet_text, tweet_date, thumbnail_url, total_downloads)
+         VALUES ($1, $2, $3, $4, $5, 1)`,
+        [tweetId, result.tweetInfo.author, result.tweetInfo.text, result.tweetInfo.date, result.thumbnail]
+      );
+
+      // Insert download links
+      for (const link of result.downloadLinks) {
+        await pool.query(
+          `INSERT INTO download_links (tweet_id, download_url, direct_url, quality, resolution, type, source, fetch_count)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, 1)`,
+          [tweetId, link.url, link.directUrl, link.quality, link.resolution, link.type, link.source]
+        );
+      }
+    }
+  } catch (error) {
+    console.error('Error storing video data:', error);
+  }
 }
+
+// Routes
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/playground', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'playground.html'));
+});
+
+app.get('/docs', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'docs.html'));
+});
 
 // Main download endpoint
 app.get('/api/download', async (req, res) => {
@@ -295,7 +317,9 @@ app.get('/api/download', async (req, res) => {
     if (!url) {
       return res.status(400).json({
         success: false,
-        error: 'Twitter URL is required'
+        error: 'Twitter URL is required',
+        author: '@m2hgamerz',
+        telegram: 'https://t.me/m2hgamerz'
       });
     }
 
@@ -303,7 +327,9 @@ app.get('/api/download', async (req, res) => {
     if (!url.includes('twitter.com/') && !url.includes('x.com/')) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid Twitter URL. Must be from twitter.com or x.com'
+        error: 'Invalid Twitter URL. Must be from twitter.com or x.com',
+        author: '@m2hgamerz',
+        telegram: 'https://t.me/m2hgamerz'
       });
     }
 
@@ -311,14 +337,16 @@ app.get('/api/download', async (req, res) => {
     if (!tweetId) {
       return res.status(400).json({
         success: false,
-        error: 'Could not extract tweet ID from URL'
+        error: 'Could not extract tweet ID from URL',
+        author: '@m2hgamerz',
+        telegram: 'https://t.me/m2hgamerz'
       });
     }
 
     console.log(`Fetching from Twitsave for URL: ${url}`);
 
     // Log the request
-    logRequest(req, url, '/api/download');
+    await logRequest(req, url, '/api/download');
 
     // Call Twitsave API
     const twitsaveUrl = `https://twitsave.com/info?url=${encodeURIComponent(url)}`;
@@ -394,185 +422,201 @@ app.get('/api/download', async (req, res) => {
 });
 
 // Statistics endpoint
-app.get('/api/stats', (req, res) => {
-  // Log the request
-  logRequest(req, 'STATS_REQUEST', '/api/stats');
+app.get('/api/stats', async (req, res) => {
+  try {
+    // Log the request
+    await logRequest(req, 'STATS_REQUEST', '/api/stats');
 
-  db.serialize(() => {
     // Get total requests
-    db.get('SELECT COUNT(*) as totalRequests FROM requests', (err, reqRow) => {
-      if (err) {
-        return res.status(500).json({ error: 'Database error' });
-      }
+    const totalRequestsResult = await pool.query('SELECT COUNT(*) as count FROM requests');
+    const totalRequests = parseInt(totalRequestsResult.rows[0].count);
 
-      // Get total videos
-      db.get('SELECT COUNT(*) as totalVideos FROM videos', (err, vidRow) => {
-        if (err) {
-          return res.status(500).json({ error: 'Database error' });
-        }
+    // Get total videos
+    const totalVideosResult = await pool.query('SELECT COUNT(*) as count FROM videos');
+    const totalVideos = parseInt(totalVideosResult.rows[0].count);
 
-        // Get popular videos
-        db.all(`
-          SELECT tweet_id, author, total_downloads 
-          FROM videos 
-          ORDER BY total_downloads DESC 
-          LIMIT 10
-        `, (err, popularRows) => {
-          if (err) {
-            return res.status(500).json({ error: 'Database error' });
-          }
+    // Get popular videos
+    const popularVideosResult = await pool.query(`
+      SELECT tweet_id, author, total_downloads 
+      FROM videos 
+      ORDER BY total_downloads DESC 
+      LIMIT 10
+    `);
 
-          // Get device stats
-          db.all(`
-            SELECT device_type, COUNT(*) as count 
-            FROM requests 
-            GROUP BY device_type
-          `, (err, deviceRows) => {
-            if (err) {
-              return res.status(500).json({ error: 'Database error' });
-            }
+    // Get device stats
+    const deviceStatsResult = await pool.query(`
+      SELECT device_type, COUNT(*) as count 
+      FROM requests 
+      GROUP BY device_type
+    `);
 
-            res.json({
-              success: true,
-              statistics: {
-                totalRequests: reqRow.totalRequests,
-                totalVideos: vidRow.totalVideos,
-                popularVideos: popularRows,
-                deviceStats: deviceRows
-              },
-              author: '@m2hgamerz',
-              telegram: 'https://t.me/m2hgamerz'
-            });
-          });
-        });
-      });
+    res.json({
+      success: true,
+      statistics: {
+        totalRequests,
+        totalVideos,
+        popularVideos: popularVideosResult.rows,
+        deviceStats: deviceStatsResult.rows
+      },
+      author: '@m2hgamerz',
+      telegram: 'https://t.me/m2hgamerz'
     });
-  });
+  } catch (error) {
+    console.error('Stats error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch statistics',
+      author: '@m2hgamerz',
+      telegram: 'https://t.me/m2hgamerz'
+    });
+  }
 });
 
 // Recent requests endpoint
-app.get('/api/requests/recent', (req, res) => {
-  db.all(`
-    SELECT ip_address, device_type, browser, platform, twitter_url, timestamp 
-    FROM requests 
-    ORDER BY timestamp DESC 
-    LIMIT 50
-  `, (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
-    }
+app.get('/api/requests/recent', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT ip_address, device_type, browser, platform, twitter_url, timestamp 
+      FROM requests 
+      ORDER BY timestamp DESC 
+      LIMIT 50
+    `);
 
     res.json({
       success: true,
-      recentRequests: rows,
-      total: rows.length,
+      recentRequests: result.rows,
+      total: result.rows.length,
       author: '@m2hgamerz',
       telegram: 'https://t.me/m2hgamerz'
     });
-  });
+  } catch (error) {
+    console.error('Recent requests error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch recent requests',
+      author: '@m2hgamerz',
+      telegram: 'https://t.me/m2hgamerz'
+    });
+  }
 });
 
 // Video search endpoint
-app.get('/api/videos/search', (req, res) => {
-  const { author, limit = 20 } = req.query;
+app.get('/api/videos/search', async (req, res) => {
+  try {
+    const { author, limit = 20 } = req.query;
 
-  let query = 'SELECT * FROM videos';
-  let params = [];
+    let query = 'SELECT * FROM videos';
+    let params = [];
 
-  if (author) {
-    query += ' WHERE author LIKE ?';
-    params.push(`%${author}%`);
-  }
-
-  query += ' ORDER BY last_fetched DESC LIMIT ?';
-  params.push(parseInt(limit));
-
-  db.all(query, params, (err, rows) => {
-    if (err) {
-      return res.status(500).json({ error: 'Database error' });
+    if (author) {
+      query += ' WHERE author ILIKE $1';
+      params.push(`%${author}%`);
     }
+
+    query += ' ORDER BY last_fetched DESC LIMIT $' + (params.length + 1);
+    params.push(parseInt(limit));
+
+    const result = await pool.query(query, params);
 
     res.json({
       success: true,
-      videos: rows,
-      total: rows.length,
+      videos: result.rows,
+      total: result.rows.length,
       author: '@m2hgamerz',
       telegram: 'https://t.me/m2hgamerz'
     });
-  });
+  } catch (error) {
+    console.error('Video search error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to search videos',
+      author: '@m2hgamerz',
+      telegram: 'https://t.me/m2hgamerz'
+    });
+  }
 });
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  // Log health check request
-  logRequest(req, 'HEALTH_CHECK', '/health');
+app.get('/health', async (req, res) => {
+  try {
+    // Log health check request
+    await logRequest(req, 'HEALTH_CHECK', '/health');
 
-  db.get('SELECT COUNT(*) as total FROM requests', (err, row) => {
+    // Test database connection
+    const dbResult = await pool.query('SELECT COUNT(*) as count FROM requests');
+    const totalRequests = parseInt(dbResult.rows[0].count);
+
     res.json({
       status: 'OK',
       timestamp: new Date().toISOString(),
       database: {
-        totalRequests: row ? row.total : 0,
-        path: dbPath
+        connected: true,
+        totalRequests: totalRequests
       },
-      service: 'Enhanced Twitsave Scraper API',
+      service: 'Twitter Video Download API with PostgreSQL',
       author: '@m2hgamerz',
       telegram: 'https://t.me/m2hgamerz'
     });
-  });
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      timestamp: new Date().toISOString(),
+      database: {
+        connected: false,
+        error: error.message
+      },
+      service: 'Twitter Video Download API',
+      author: '@m2hgamerz',
+      telegram: 'https://t.me/m2hgamerz'
+    });
+  }
 });
 
 // API documentation
-app.get('/', (req, res) => {
-  // Log documentation request
-  logRequest(req, 'DOCUMENTATION', '/');
-
+app.get('/api', (req, res) => {
   res.json({
     service: 'Twitter Video Download API',
     version: '2.0',
-    description: 'Enhanced API with database logging and analytics',
+    description: 'Professional API for downloading Twitter videos with PostgreSQL database',
     author: '@m2hgamerz',
     telegram: 'https://t.me/m2hgamerz',
     endpoints: {
-      '/api/download': {
-        method: 'GET',
-        parameters: { url: 'Twitter URL (required)' },
-        description: 'Get download links for Twitter video'
-      },
-      '/api/stats': {
-        method: 'GET',
-        description: 'Get API usage statistics'
-      },
-      '/api/requests/recent': {
-        method: 'GET', 
-        description: 'Get recent API requests'
-      },
-      '/api/videos/search': {
-        method: 'GET',
-        parameters: { author: 'Filter by author', limit: 'Limit results' },
-        description: 'Search stored videos'
-      },
+      '/api/download': 'Get download links for Twitter video',
+      '/api/stats': 'Get API usage statistics',
+      '/api/requests/recent': 'Get recent API requests',
+      '/api/videos/search': 'Search stored videos',
       '/health': 'Service health check'
-    },
-    features: [
-      'SQLite database storage',
-      'IP and device logging',
-      'Request analytics',
-      'Video metadata storage',
-      'Multiple quality downloads'
-    ]
+    }
   });
 });
 
-process.on('SIGINT', () => {
-  console.log('Closing database connection...');
-  db.close((err) => {
-    if (err) {
-      console.error(err.message);
-    }
-    console.log('Database connection closed.');
-    process.exit(0);
+// Error handling middleware
+app.use((error, req, res, next) => {
+  console.error('Unhandled error:', error);
+  res.status(500).json({
+    success: false,
+    error: 'Internal server error',
+    author: '@m2hgamerz',
+    telegram: 'https://t.me/m2hgamerz'
   });
+});
+
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Endpoint not found',
+    author: '@m2hgamerz',
+    telegram: 'https://t.me/m2hgamerz'
+  });
+});
+
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('Shutting down gracefully...');
+  await pool.end();
+  process.exit(0);
 });
 
 app.listen(PORT, () => {
@@ -582,4 +626,5 @@ app.listen(PORT, () => {
   console.log(`❤️  Health Check: http://localhost:${PORT}/health`);
   console.log(`👤 Author: @m2hgamerz`);
   console.log(`📱 Telegram: https://t.me/m2hgamerz`);
+  console.log(`🗄️  Database: PostgreSQL`);
 });
