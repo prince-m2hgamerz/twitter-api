@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-gray-100">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>M2H Admin Panel</title>
+
+  <!-- iOS Minimal White + Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    .ios-card {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 22px;
+      box-shadow:
+        0 4px 16px rgba(0, 0.5, 0, 0.06),
+        0 1px 4px rgba(0, 0, 0, 0.08);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.6);
+    }
+
+    .ios-title {
+      font-size: 26px;
+      font-weight: 700;
+      color: #111827;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen flex flex-col items-center px-3 py-6">
+
+  <div class="w-full max-w-3xl">
+    <h1 class="ios-title mb-4 text-center">Admin Login</h1>
+
+    <!-- LOGIN BOX -->
+    <div id="login-box" class="ios-card">
+      <label class="text-gray-700 font-medium">Admin Key</label>
+      <input
+        id="admin-key"
+        type="password"
+        placeholder="Enter Admin Key..."
+        class="w-full mt-2 mb-4 p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-black focus:outline-none"
+      />
+      <button
+        class="w-full bg-black text-white py-3 rounded-xl text-lg active:scale-95 transition"
+        onclick="login()"
+      >
+        Login
+      </button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard" class="hidden mt-6 space-y-6">
+
+      <h1 class="ios-title text-center">Dashboard</h1>
+
+      <!-- Stats Cards -->
+      <div class="grid grid-cols-2 gap-4">
+
+        <div class="ios-card text-center">
+          <p class="font-semibold text-gray-700">Total Requests</p>
+          <p id="totalRequests" class="text-3xl font-bold text-black">0</p>
+        </div>
+
+        <div class="ios-card text-center">
+          <p class="font-semibold text-gray-700">Total Videos</p>
+          <p id="totalVideos" class="text-3xl font-bold text-black">0</p>
+        </div>
+
+      </div>
+
+      <!-- Device Stats -->
+      <div class="ios-card">
+        <h2 class="text-xl font-semibold mb-2">Device Stats</h2>
+        <div id="deviceStats" class="space-y-1 text-gray-700"></div>
+      </div>
+
+      <!-- Recent Requests -->
+      <div class="ios-card">
+        <h2 class="text-xl font-semibold mb-2">Recent Requests</h2>
+        <div id="recentRequests" class="space-y-3 max-h-72 overflow-y-auto"></div>
+      </div>
+
+      <!-- Videos -->
+      <div class="ios-card">
+        <h2 class="text-xl font-semibold mb-2">Video Logs</h2>
+        <div id="videoLogs" class="space-y-3 max-h-72 overflow-y-auto"></div>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let ADMIN_KEY = null;
+
+    function login() {
+      ADMIN_KEY = document.getElementById("admin-key").value.trim();
+      if (!ADMIN_KEY) return alert("Enter Admin Key");
+
+      document.getElementById("login-box").classList.add("hidden");
+      document.getElementById("dashboard").classList.remove("hidden");
+
+      loadDashboard();
+    }
+
+    async function loadDashboard() {
+      try {
+        const res = await fetch("/api/admin/data", {
+          headers: {
+            Authorization: "Bearer " + ADMIN_KEY,
+          },
+        });
+
+        const json = await res.json();
+        if (!json.success) {
+          alert("Invalid Admin Key");
+          location.reload();
+          return;
+        }
+
+        // Stats
+        document.getElementById("totalRequests").innerText =
+          json.stats.total_requests;
+        document.getElementById("totalVideos").innerText =
+          json.stats.total_videos;
+
+        // Device Stats
+        const deviceContainer = document.getElementById("deviceStats");
+        deviceContainer.innerHTML = "";
+
+        const deviceMap = {};
+        json.requests.forEach((r) => {
+          deviceMap[r.device_type] = (deviceMap[r.device_type] || 0) + 1;
+        });
+
+        Object.keys(deviceMap).forEach((d) => {
+          deviceContainer.innerHTML += 
+            `<p class="text-sm">${d}: <b>${deviceMap[d]}</b></p>`;
+        });
+
+        // Recent Requests
+        const reqContainer = document.getElementById("recentRequests");
+        reqContainer.innerHTML = "";
+
+        json.requests.slice(0, 30).forEach((r) => {
+          reqContainer.innerHTML += `
+            <div class="p-3 rounded-xl border bg-white">
+              <p class="text-sm"><b>IP:</b> ${r.ip_address}</p>
+              <p class="text-sm"><b>Device:</b> ${r.device_type}</p>
+              <p class="text-sm"><b>Browser:</b> ${r.browser}</p>
+              <p class="text-sm"><b>URL:</b> ${r.twitter_url || "—"}</p>
+              <p class="text-xs text-gray-500">${r.created_at}</p>
+            </div>`;
+        });
+
+        // Video Logs
+        const videoContainer = document.getElementById("videoLogs");
+        videoContainer.innerHTML = "";
+
+        json.videos.forEach((v) => {
+          videoContainer.innerHTML += `
+            <div class="p-3 rounded-xl border bg-white">
+              <p><b>${v.author}</b></p>
+              <p class="text-sm">${v.tweet_text}</p>
+              <p class="text-sm text-gray-600">Downloads: ${v.total_downloads}</p>
+            </div>`;
+        });
+
+      } catch (err) {
+        alert("Error loading dashboard");
+      }
+    }
+  </script>
+</body>
+</html>
