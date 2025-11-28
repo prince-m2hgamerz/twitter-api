@@ -1,5 +1,6 @@
 // ============================================================
-//  TWITTER VIDEO API by @m2hgamerz — FINAL RPC FIXED VERSION
+//  TWITTER VIDEO API — FINAL UPDATED VERSION
+//  Includes: global request counter + admin fix + supabase fixes
 // ============================================================
 
 if (process.env.NODE_ENV !== "production") {
@@ -16,15 +17,18 @@ const { createClient } = require("@supabase/supabase-js");
 
 const app = express();
 
+// Public HTML Directory
+const PUBLIC_DIR = path.join(__dirname, "../public");
+
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, "../public")));
+app.use(express.static(PUBLIC_DIR));
 
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 // ============================================================
-// ADMIN AUTH
+//  ADMIN AUTH
 // ============================================================
 function adminAuth(req, res, next) {
   const token = req.headers.authorization?.split(" ")[1];
@@ -35,7 +39,20 @@ function adminAuth(req, res, next) {
 }
 
 // ============================================================
-// DEVICE INFO PARSER
+//  GLOBAL REQUEST COUNTER — EVERY REQUEST INCREASES total_requests
+// ============================================================
+app.use(async (req, res, next) => {
+  const { error } = await supabase.rpc("increment_stat", {
+    field_name: "total_requests"
+  });
+
+  if (error) console.log("RPC Global Counter Error:", error.message);
+
+  next();
+});
+
+// ============================================================
+//  PARSE CLIENT INFO
 // ============================================================
 function getClientInfo(req) {
   const ua = req.headers["user-agent"] || "Unknown";
@@ -73,7 +90,7 @@ function getClientInfo(req) {
 }
 
 // ============================================================
-// LOG REQUEST TO SUPABASE (RPC FIXED)
+//  LOG REQUEST (DB logging only — no counting)
 // ============================================================
 async function logRequest(req, url, endpoint) {
   const info = getClientInfo(req);
@@ -83,18 +100,11 @@ async function logRequest(req, url, endpoint) {
     twitter_url: url,
     endpoint
   });
-
-  // safe RPC call
-  const { error } = await supabase.rpc("increment_stat", {
-    field_name: "total_requests"
-  });
-
-  if (error) console.log("RPC REQUEST ERROR:", error.message);
 }
 
-// ============================================================
-// TWITSAVE HEADERS
-// ============================================================
+// ------------------------------------------------------------
+//  UTIL FUNCTIONS
+// ------------------------------------------------------------
 function getTwitsaveHeaders() {
   return {
     "user-agent": new userAgent().toString(),
@@ -103,17 +113,11 @@ function getTwitsaveHeaders() {
   };
 }
 
-// ============================================================
-// TWEET ID
-// ============================================================
 function getTweetId(url) {
   const match = url.match(/status\/(\d+)/);
   return match ? match[1] : null;
 }
 
-// ============================================================
-// PARSE TWITSAVE
-// ============================================================
 function extractDownloadLinksFromTwitsave(html, twitterUrl) {
   const $ = cheerio.load(html);
 
@@ -137,9 +141,9 @@ function extractDownloadLinksFromTwitsave(html, twitterUrl) {
   result.thumbnail = $("video").attr("poster") || null;
   result.videoPreview = $("video").attr("src") || null;
 
-  $("a[href*='/download?file=']").each((_, link) => {
-    const href = $(link).attr("href");
-    const text = $(link).find(".truncate").text().trim();
+  $("a[href*='/download?file=']").each((i, el) => {
+    const href = $(el).attr("href");
+    const text = $(el).find(".truncate").text().trim();
     const res = text.match(/(\d+x\d+)/)?.[1] || "unknown";
 
     let quality = "low";
@@ -159,7 +163,7 @@ function extractDownloadLinksFromTwitsave(html, twitterUrl) {
 }
 
 // ============================================================
-// STORE VIDEO (RPC FIXED)
+//  STORE VIDEO (Updates total_videos)
 // ============================================================
 async function storeVideo(tweetId, parsed) {
   const existing = await supabase
@@ -186,25 +190,24 @@ async function storeVideo(tweetId, parsed) {
       total_downloads: 1
     });
 
-    // safe RPC
     const { error } = await supabase.rpc("increment_stat", {
       field_name: "total_videos"
     });
 
-    if (error) console.log("RPC VIDEO ERROR:", error.message);
+    if (error) console.log("RPC Video Error:", error.message);
   }
 }
 
 // ============================================================
-// STATIC PAGES
+//  STATIC PAGES ROUTES (Fix for Vercel 404)
 // ============================================================
-app.get("/", (_, res) => res.sendFile(path.join(__dirname, "../public/index.html")));
-app.get("/docs", (_, res) => res.sendFile(path.join(__dirname, "../public/docs.html")));
-app.get("/playground", (_, res) => res.sendFile(path.join(__dirname, "../public/playground.html")));
-app.get("/admin", (_, res) => res.sendFile(path.join(__dirname, "../public/admin.html")));
+app.get("/", (_, res) => res.sendFile(path.join(PUBLIC_DIR, "index.html")));
+app.get("/docs", (_, res) => res.sendFile(path.join(PUBLIC_DIR, "docs.html")));
+app.get("/playground", (_, res) => res.sendFile(path.join(PUBLIC_DIR, "playground.html")));
+app.get("/admin", (_, res) => res.sendFile(path.join(PUBLIC_DIR, "admin.html"))); // FIXED
 
 // ============================================================
-// DOWNLOAD API
+//  DOWNLOAD API
 // ============================================================
 app.get("/api/download", async (req, res) => {
   try {
@@ -232,7 +235,7 @@ app.get("/api/download", async (req, res) => {
 });
 
 // ============================================================
-// STATS (SAFE VERSION)
+//  STATS API
 // ============================================================
 app.get("/api/stats", async (req, res) => {
   const { data: statsRaw } = await supabase
@@ -254,22 +257,22 @@ app.get("/api/stats", async (req, res) => {
   res.json({
     success: true,
     statistics: {
-      totalRequests: stats.total_requests || 0,
-      totalVideos: stats.total_videos || 0,
+      totalRequests: stats.total_requests,
+      totalVideos: stats.total_videos,
       popularVideos: (videos || [])
         .sort((a, b) => b.total_downloads - a.total_downloads)
         .slice(0, 10),
       deviceStats,
       memoryUsage: {
-        requests: requests ? requests.length : 0,
-        videos: videos ? videos.length : 0
+        requests: requests?.length || 0,
+        videos: videos?.length || 0
       }
     }
   });
 });
 
 // ============================================================
-// RECENT REQUESTS
+//  RECENT REQUESTS
 // ============================================================
 app.get("/api/requests/recent", async (req, res) => {
   const limit = Number(req.query.limit) || 50;
@@ -284,7 +287,7 @@ app.get("/api/requests/recent", async (req, res) => {
 });
 
 // ============================================================
-// VIDEO SEARCH
+//  VIDEO SEARCH
 // ============================================================
 app.get("/api/videos/search", async (req, res) => {
   const q = (req.query.author || "").toLowerCase();
@@ -298,7 +301,7 @@ app.get("/api/videos/search", async (req, res) => {
 });
 
 // ============================================================
-// ADMIN DATA (SAFE)
+//  ADMIN PANEL DATA
 // ============================================================
 app.get("/api/admin/data", adminAuth, async (req, res) => {
   const { data: statsRaw } = await supabase
@@ -324,21 +327,18 @@ app.get("/api/admin/data", adminAuth, async (req, res) => {
 });
 
 // ============================================================
-// HEALTH CHECK
+//  HEALTH CHECK
 // ============================================================
 app.get("/health", (req, res) => {
-  res.json({
-    status: "OK",
-    timestamp: new Date().toISOString()
-  });
+  res.json({ status: "OK", timestamp: new Date().toISOString() });
 });
 
 // ============================================================
-// LOCAL DEV SERVER
+//  LOCAL DEV SERVER
 // ============================================================
 if (process.env.NODE_ENV !== "production") {
   app.listen(3000, () =>
-    console.log("🔥 Local server running at http://localhost:3000")
+    console.log("🔥 LOCAL SERVER: http://localhost:3000")
   );
 }
 
