@@ -1,0 +1,180 @@
+/* ============================================================
+   M2H ADMIN PANEL — MATERIAL + GLASS UI
+   ============================================================ */
+
+/* -------- Glass Morphism Base -------- */
+.glass-card {
+  background: rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+
+/* -------- Dashboard Cards -------- */
+.dashboard-card {
+  @apply glass-card p-6 flex flex-col items-start space-y-2 transition hover:scale-[1.02];
+}
+
+.dashboard-card h3 {
+  @apply text-lg opacity-80;
+}
+
+.stat-number {
+  @apply text-4xl font-bold mt-2;
+}
+
+/* -------- Sidebar Navigation -------- */
+.nav-item {
+  @apply w-full flex items-center space-x-3 p-3 
+         rounded-lg transition bg-gray-900/40 text-gray-300 
+         hover:bg-gray-800;
+}
+
+.nav-item.active {
+  @apply bg-blue-600 text-white hover:bg-blue-700;
+}
+
+.nav-item .material-icons-round {
+  font-size: 22px;
+}
+
+/* -------- Tab Pages -------- */
+.tab-page {
+  animation: fade 0.25s ease-in-out;
+}
+
+@keyframes fade {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* -------- Admin Table -------- */
+.admin-table {
+  width: 100%;
+  border-spacing: 0;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.admin-table th {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 12px;
+  text-align: left;
+  font-weight: 600;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.admin-table td {
+  padding: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 14px;
+}
+
+.admin-table tr:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* -------- Scrollbars -------- */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2563eb;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* -------- Login Screen -------- */
+#login-screen .glass-card {
+  width: 90%;
+  max-width: 350px;
+}
+
+/* -------- Animations -------- */
+.slide-up {
+  animation: slideUp 0.35s ease-out;
+}
+
+@keyframes slideUp {
+  0% { transform: translateY(20px); opacity: 0; }
+  100% { transform: translateY(0); opacity: 1; }
+}
+
+/* -------- Charts Container -------- */
+.chart-container {
+  @apply glass-card p-4;
+}
+
+/* -------- Buttons -------- */
+button {
+  transition: 0.2s ease-in-out;
+}
+
+button:active {
+  transform: scale(0.96);
+}
+
+/* -------- Master Layout Fixes -------- */
+#admin-panel {
+  height: 100vh;
+  overflow: hidden;
+}
+
+main {
+  overflow-y: auto;
+}
+
+/* -------- Sidebar Mobile -------- */
+#sidebar {
+  transition: transform 0.25s ease;
+}
+
+#sidebar.hidden-sidebar {
+  transform: translateX(-100%);
+}
+
+/* -------- Light Theme Support -------- */
+.light {
+  --bg: #f4f7fc;
+  --text: #1a1a1a;
+  --card: rgba(255, 255, 255, 0.6);
+}
+
+.light body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.light .glass-card {
+  background: var(--card);
+  border: 1px solid rgba(0,0,0,0.08);
+}
+
+.light .nav-item {
+  background: rgba(0,0,0,0.05);
+  color: #222;
+}
+
+.light .nav-item:hover {
+  background: rgba(0,0,0,0.1);
+}
+
+.light .nav-item.active {
+  background: #2563eb;
+  color: #fff;
+}
+
+/* -------- Logs Panel -------- */
+#logs-output {
+  background: rgba(0,0,0,0.25);
+  border-radius: 12px;
+  white-space: pre-wrap;
+  font-family: monospace;
+}

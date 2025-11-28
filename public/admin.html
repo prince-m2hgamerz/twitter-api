@@ -1,177 +1,321 @@
 <!DOCTYPE html>
-<html lang="en" class="bg-gray-100">
+<html lang="en" class="dark">
 <head>
   <meta charset="UTF-8" />
+  <meta name="theme-color" content="#2563eb" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>M2H Admin Panel</title>
 
-  <!-- iOS Minimal White + Tailwind -->
+  <!-- TailwindCSS -->
   <script src="https://cdn.tailwindcss.com"></script>
 
-  <style>
-    .ios-card {
-      background: #ffffff;
-      border-radius: 20px;
-      padding: 22px;
-      box-shadow:
-        0 4px 16px rgba(0, 0.5, 0, 0.06),
-        0 1px 4px rgba(0, 0, 0, 0.08);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.6);
-    }
+  <!-- Material Icons -->
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
 
-    .ios-title {
-      font-size: 26px;
-      font-weight: 700;
-      color: #111827;
-    }
-  </style>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- Custom Admin Styles -->
+  <link rel="stylesheet" href="/admin.css">
+
 </head>
 
-<body class="min-h-screen flex flex-col items-center px-3 py-6">
+<body class="bg-gray-900 text-white overflow-hidden">
 
-  <div class="w-full max-w-3xl">
-    <h1 class="ios-title mb-4 text-center">Admin Login</h1>
+  <!-- ========================================================= -->
+  <!-- LOGIN SCREEN -->
+  <!-- ========================================================= -->
+  <div id="login-screen" class="fixed inset-0 bg-gray-900 flex flex-col items-center justify-center">
+    <div class="glass-card p-8 rounded-xl w-80 text-center">
+      <h1 class="text-2xl font-bold mb-6">Admin Login</h1>
 
-    <!-- LOGIN BOX -->
-    <div id="login-box" class="ios-card">
-      <label class="text-gray-700 font-medium">Admin Key</label>
-      <input
-        id="admin-key"
-        type="password"
-        placeholder="Enter Admin Key..."
-        class="w-full mt-2 mb-4 p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-black focus:outline-none"
-      />
-      <button
-        class="w-full bg-black text-white py-3 rounded-xl text-lg active:scale-95 transition"
-        onclick="login()"
-      >
+      <input id="admin-key-input" 
+             type="password" 
+             placeholder="Enter Admin Key" 
+             class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 outline-none">
+
+      <button onclick="AdminAPI.login()" 
+              class="w-full mt-4 p-3 rounded-lg bg-blue-600 hover:bg-blue-700 transition">
         Login
       </button>
-    </div>
 
-    <!-- DASHBOARD -->
-    <div id="dashboard" class="hidden mt-6 space-y-6">
-
-      <h1 class="ios-title text-center">Dashboard</h1>
-
-      <!-- Stats Cards -->
-      <div class="grid grid-cols-2 gap-4">
-
-        <div class="ios-card text-center">
-          <p class="font-semibold text-gray-700">Total Requests</p>
-          <p id="totalRequests" class="text-3xl font-bold text-black">0</p>
-        </div>
-
-        <div class="ios-card text-center">
-          <p class="font-semibold text-gray-700">Total Videos</p>
-          <p id="totalVideos" class="text-3xl font-bold text-black">0</p>
-        </div>
-
-      </div>
-
-      <!-- Device Stats -->
-      <div class="ios-card">
-        <h2 class="text-xl font-semibold mb-2">Device Stats</h2>
-        <div id="deviceStats" class="space-y-1 text-gray-700"></div>
-      </div>
-
-      <!-- Recent Requests -->
-      <div class="ios-card">
-        <h2 class="text-xl font-semibold mb-2">Recent Requests</h2>
-        <div id="recentRequests" class="space-y-3 max-h-72 overflow-y-auto"></div>
-      </div>
-
-      <!-- Videos -->
-      <div class="ios-card">
-        <h2 class="text-xl font-semibold mb-2">Video Logs</h2>
-        <div id="videoLogs" class="space-y-3 max-h-72 overflow-y-auto"></div>
-      </div>
-
+      <p id="login-error" class="hidden mt-3 text-red-400 text-sm">
+        Invalid Admin Key
+      </p>
     </div>
   </div>
 
-  <script>
-    let ADMIN_KEY = null;
 
-    function login() {
-      ADMIN_KEY = document.getElementById("admin-key").value.trim();
-      if (!ADMIN_KEY) return alert("Enter Admin Key");
+  <!-- ========================================================= -->
+  <!-- MAIN ADMIN PANEL -->
+  <!-- ========================================================= -->
+  <div id="admin-panel" class="hidden flex h-screen">
 
-      document.getElementById("login-box").classList.add("hidden");
-      document.getElementById("dashboard").classList.remove("hidden");
+    <!-- ========================================================= -->
+    <!-- SIDEBAR -->
+    <!-- ========================================================= -->
+    <aside id="sidebar" class="w-64 bg-gray-950 border-r border-gray-800 flex flex-col">
+      
+      <div class="p-5 border-b border-gray-800 flex items-center space-x-3">
+        <span class="material-icons-round text-blue-500 text-3xl">admin_panel_settings</span>
+        <h2 class="text-xl font-bold">M2H Admin</h2>
+      </div>
 
-      loadDashboard();
-    }
+      <nav class="flex-1 overflow-y-auto">
+        <ul class="p-4 space-y-1">
 
-    async function loadDashboard() {
-      try {
-        const res = await fetch("/api/admin/data", {
-          headers: {
-            Authorization: "Bearer " + ADMIN_KEY,
-          },
-        });
+          <li>
+            <button onclick="AdminUI.switchTab('dashboard')" 
+                    class="nav-item active">
+              <span class="material-icons-round">dashboard</span>
+              Dashboard
+            </button>
+          </li>
 
-        const json = await res.json();
-        if (!json.success) {
-          alert("Invalid Admin Key");
-          location.reload();
-          return;
-        }
+          <li>
+            <button onclick="AdminUI.switchTab('videos')" 
+                    class="nav-item">
+              <span class="material-icons-round">movie</span>
+              Videos
+            </button>
+          </li>
 
-        // Stats
-        document.getElementById("totalRequests").innerText =
-          json.stats.total_requests;
-        document.getElementById("totalVideos").innerText =
-          json.stats.total_videos;
+          <li>
+            <button onclick="AdminUI.switchTab('requests')" 
+                    class="nav-item">
+              <span class="material-icons-round">list</span>
+              Requests
+            </button>
+          </li>
 
-        // Device Stats
-        const deviceContainer = document.getElementById("deviceStats");
-        deviceContainer.innerHTML = "";
+          <li>
+            <button onclick="AdminUI.switchTab('bans')" 
+                    class="nav-item">
+              <span class="material-icons-round">block</span>
+              Ban System
+            </button>
+          </li>
 
-        const deviceMap = {};
-        json.requests.forEach((r) => {
-          deviceMap[r.device_type] = (deviceMap[r.device_type] || 0) + 1;
-        });
+          <li>
+            <button onclick="AdminUI.switchTab('settings')" 
+                    class="nav-item">
+              <span class="material-icons-round">settings</span>
+              Settings
+            </button>
+          </li>
 
-        Object.keys(deviceMap).forEach((d) => {
-          deviceContainer.innerHTML += 
-            `<p class="text-sm">${d}: <b>${deviceMap[d]}</b></p>`;
-        });
+          <li>
+            <button onclick="AdminUI.switchTab('logs')" 
+                    class="nav-item">
+              <span class="material-icons-round">bug_report</span>
+              Logs
+            </button>
+          </li>
 
-        // Recent Requests
-        const reqContainer = document.getElementById("recentRequests");
-        reqContainer.innerHTML = "";
+        </ul>
+      </nav>
 
-        json.requests.slice(0, 30).forEach((r) => {
-          reqContainer.innerHTML += `
-            <div class="p-3 rounded-xl border bg-white">
-              <p class="text-sm"><b>IP:</b> ${r.ip_address}</p>
-              <p class="text-sm"><b>Device:</b> ${r.device_type}</p>
-              <p class="text-sm"><b>Browser:</b> ${r.browser}</p>
-              <p class="text-sm"><b>URL:</b> ${r.twitter_url || "—"}</p>
-              <p class="text-xs text-gray-500">${r.created_at}</p>
-            </div>`;
-        });
+      <div class="p-4 border-t border-gray-800">
+        <button onclick="AdminAPI.logout()" 
+                class="w-full p-3 rounded-lg bg-red-600 hover:bg-red-700 flex items-center justify-center space-x-2">
+          <span class="material-icons-round">logout</span>
+          <span>Logout</span>
+        </button>
+      </div>
 
-        // Video Logs
-        const videoContainer = document.getElementById("videoLogs");
-        videoContainer.innerHTML = "";
+    </aside>
 
-        json.videos.forEach((v) => {
-          videoContainer.innerHTML += `
-            <div class="p-3 rounded-xl border bg-white">
-              <p><b>${v.author}</b></p>
-              <p class="text-sm">${v.tweet_text}</p>
-              <p class="text-sm text-gray-600">Downloads: ${v.total_downloads}</p>
-            </div>`;
-        });
 
-      } catch (err) {
-        alert("Error loading dashboard");
-      }
-    }
-  </script>
+    <!-- ========================================================= -->
+    <!-- MAIN CONTENT AREA -->
+    <!-- ========================================================= -->
+    <main class="flex-1 overflow-y-auto">
+
+      <!-- TOP BAR -->
+      <header class="p-4 border-b border-gray-800 flex items-center justify-between backdrop-blur bg-gray-900/60">
+        <h1 id="page-title" class="text-2xl font-bold">Dashboard</h1>
+
+        <button onclick="AdminUI.toggleSidebar()" 
+                class="md:hidden p-2 rounded bg-gray-800">
+          <span class="material-icons-round">menu</span>
+        </button>
+      </header>
+
+      <!-- ========================================================= -->
+      <!-- DASHBOARD TAB -->
+      <!-- ========================================================= -->
+      <section id="tab-dashboard" class="tab-page">
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
+
+          <!-- Total Requests -->
+          <div class="dashboard-card">
+            <span class="material-icons-round text-blue-400">trending_up</span>
+            <h3>Total Requests</h3>
+            <p id="stat-total-requests" class="stat-number">0</p>
+          </div>
+
+          <!-- Total Videos -->
+          <div class="dashboard-card">
+            <span class="material-icons-round text-green-400">movie_filter</span>
+            <h3>Total Videos</h3>
+            <p id="stat-total-videos" class="stat-number">0</p>
+          </div>
+
+          <!-- Unique Visitors -->
+          <div class="dashboard-card">
+            <span class="material-icons-round text-purple-400">public</span>
+            <h3>Unique IPs</h3>
+            <p id="stat-unique-ips" class="stat-number">0</p>
+          </div>
+
+        </div>
+
+        <!-- Charts -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+
+          <div class="glass-card p-4">
+            <h3 class="text-xl font-semibold mb-2">Device Analytics</h3>
+            <canvas id="chart-devices"></canvas>
+          </div>
+
+          <div class="glass-card p-4">
+            <h3 class="text-xl font-semibold mb-2">Requests (Last 24h)</h3>
+            <canvas id="chart-requests"></canvas>
+          </div>
+
+        </div>
+
+      </section>
+
+
+      <!-- ========================================================= -->
+      <!-- VIDEOS TAB -->
+      <!-- ========================================================= -->
+      <section id="tab-videos" class="tab-page hidden">
+
+        <div class="p-6">
+          <h2 class="text-2xl font-bold mb-4">Top Downloaded Videos</h2>
+
+          <div id="videos-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            <!-- JS loads video cards here -->
+          </div>
+        </div>
+
+      </section>
+
+
+      <!-- ========================================================= -->
+      <!-- REQUESTS TAB -->
+      <!-- ========================================================= -->
+      <section id="tab-requests" class="tab-page hidden">
+
+        <div class="p-6">
+          <h2 class="text-2xl font-bold mb-4">Recent Requests</h2>
+
+          <table class="w-full text-left border-collapse admin-table">
+            <thead>
+              <tr>
+                <th>IP</th>
+                <th>Device</th>
+                <th>Browser</th>
+                <th>Platform</th>
+                <th>Endpoint</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="requests-table-body"></tbody>
+          </table>
+        </div>
+
+      </section>
+
+
+      <!-- ========================================================= -->
+      <!-- BAN SYSTEM TAB -->
+      <!-- ========================================================= -->
+      <section id="tab-bans" class="tab-page hidden p-6">
+        <h2 class="text-2xl font-bold mb-4">Ban System</h2>
+
+        <div class="glass-card p-4 w-full md:w-1/2">
+          <h3 class="text-lg font-semibold mb-2">Ban IP Address</h3>
+
+          <input id="ban-ip-input" 
+                 type="text" 
+                 placeholder="Enter IP Address" 
+                 class="w-full p-3 rounded bg-gray-800 border border-gray-700 outline-none">
+
+          <button onclick="AdminAPI.banIP()" 
+                  class="w-full mt-3 p-3 rounded bg-red-600 hover:bg-red-700">
+            Ban IP
+          </button>
+
+          <p id="ban-status" class="mt-3 text-green-400 hidden">Banned Successfully</p>
+        </div>
+
+      </section>
+
+
+      <!-- ========================================================= -->
+      <!-- SETTINGS TAB -->
+      <!-- ========================================================= -->
+      <section id="tab-settings" class="tab-page hidden p-6">
+
+        <h2 class="text-2xl font-bold mb-4">Admin Settings</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+          <div class="glass-card p-4">
+            <h3 class="text-xl font-semibold mb-3">Theme</h3>
+
+            <button onclick="AdminUI.toggleTheme()" class="p-3 rounded bg-blue-600 hover:bg-blue-700">
+              Toggle Dark / Light Mode
+            </button>
+          </div>
+
+          <div class="glass-card p-4">
+            <h3 class="text-xl font-semibold mb-3">Danger Zone</h3>
+
+            <button onclick="AdminAPI.resetStats()" 
+                    class="p-3 rounded bg-red-600 hover:bg-red-700 w-full">
+              Reset Statistics
+            </button>
+
+            <button onclick="AdminAPI.clearRequests()" 
+                    class="p-3 mt-3 rounded bg-red-700 hover:bg-red-800 w-full">
+              Clear All Requests
+            </button>
+
+            <button onclick="AdminAPI.clearVideos()" 
+                    class="p-3 mt-3 rounded bg-red-800 hover:bg-red-900 w-full">
+              Clear All Videos
+            </button>
+
+          </div>
+
+        </div>
+
+      </section>
+
+
+
+      <!-- ========================================================= -->
+      <!-- LOGS TAB -->
+      <!-- ========================================================= -->
+      <section id="tab-logs" class="tab-page hidden p-6">
+
+        <h2 class="text-2xl font-bold">System Logs</h2>
+
+        <pre id="logs-output" class="glass-card p-4 mt-4 h-[400px] overflow-y-auto text-sm"></pre>
+
+      </section>
+
+    </main>
+
+  </div> <!-- END ADMIN PANEL -->
+
+  <script src="/admin-api.js"></script>
+  <script src="/admin.js"></script>
+
 </body>
 </html>
