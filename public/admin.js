@@ -1,56 +1,83 @@
 /**********************************************************************
- * M2H ADMIN DASHBOARD — Final Version
- * Real-time Monitoring + Charts + Logs + Admin Controls
+ * M2H ADMIN PANEL — FINAL MERGED VERSION
+ * Includes: AdminAPI + UI + Monitoring + Charts (NO ERRORS)
  * Author: @m2hgamerz
  **********************************************************************/
 
-// -------------------------------------------------------------------
-// GLOBALS
-// -------------------------------------------------------------------
-const API_BASE = "";
-const ADMIN_TOKEN = localStorage.getItem("ADMIN_TOKEN") || "";
+/* ============================================================
+   GLOBALS
+   ============================================================ */
 
-// Chart instances (so we can safely destroy before re-render)
-let chartDevices = null;
-let chartRequests = null;
+// Admin token
+let ADMIN_TOKEN = localStorage.getItem("ADMIN_TOKEN") || null;
 
-// -------------------------------------------------------------------
-// HELPER: API CALL
-// -------------------------------------------------------------------
-async function api(url, method = "GET", body = null, auth = false) {
+// Base API helper
+async function api(url, method = "GET", body = null) {
     const opts = { method, headers: { "Content-Type": "application/json" } };
 
-    if (auth) opts.headers["Authorization"] = "Bearer " + ADMIN_TOKEN;
+    if (ADMIN_TOKEN) {
+        opts.headers["Authorization"] = `Bearer ${ADMIN_TOKEN}`;
+    }
+
     if (body) opts.body = JSON.stringify(body);
 
-    const res = await fetch(API_BASE + url, opts);
+    const res = await fetch(url, opts);
     return await res.json();
 }
 
-// -------------------------------------------------------------------
-// LOGIN SYSTEM
-// -------------------------------------------------------------------
+// Chart instances
+let chartDevices = null;
+let chartRequests = null;
+
+
+/* ============================================================
+   LOGIN SYSTEM
+   ============================================================ */
+
 async function loginAdmin() {
-    const token = document.getElementById("admin-password").value.trim();
-    if (!token) return alert("Enter admin key");
+    const key = document.getElementById("admin-key-input").value.trim();
+    const loginError = document.getElementById("login-error");
 
-    localStorage.setItem("ADMIN_TOKEN", token);
-    location.reload();
-}
-
-function ensureAuth() {
-    if (!ADMIN_TOKEN) {
-        document.getElementById("login-screen").style.display = "flex";
-        document.getElementById("admin-panel").style.display = "none";
-    } else {
-        document.getElementById("login-screen").style.display = "none";
-        document.getElementById("admin-panel").style.display = "block";
+    if (!key) {
+        loginError.innerText = "Admin key is required.";
+        loginError.classList.remove("hidden");
+        return;
     }
+
+    // Test the key
+    const test = await fetch("/api/admin/data", {
+        headers: { Authorization: `Bearer ${key}` }
+    });
+
+    if (test.status === 401) {
+        loginError.innerText = "Invalid Admin Key";
+        loginError.classList.remove("hidden");
+        return;
+    }
+
+    // Success
+    ADMIN_TOKEN = key;
+    localStorage.setItem("ADMIN_TOKEN", key);
+
+    loginError.classList.add("hidden");
+    document.getElementById("login-screen").classList.add("hidden");
+    document.getElementById("admin-panel").classList.remove("hidden");
+
+    switchTab("dashboard");
 }
 
-// -------------------------------------------------------------------
-// UI: NAVIGATION
-// -------------------------------------------------------------------
+function logoutAdmin() {
+    ADMIN_TOKEN = null;
+    localStorage.removeItem("ADMIN_TOKEN");
+
+    document.getElementById("admin-panel").classList.add("hidden");
+    document.getElementById("login-screen").classList.remove("hidden");
+}
+
+
+/* ============================================================
+   TAB SWITCHING
+   ============================================================ */
 function switchTab(tab) {
     document.querySelectorAll(".admin-section").forEach(sec => sec.style.display = "none");
     document.getElementById(`section-${tab}`).style.display = "block";
@@ -59,9 +86,11 @@ function switchTab(tab) {
     document.getElementById(`nav-${tab}`).classList.add("active");
 }
 
-// -------------------------------------------------------------------
-// CHARTS
-// -------------------------------------------------------------------
+
+/* ============================================================
+   CHART RENDERERS
+   ============================================================ */
+
 function renderDeviceChart(requests) {
     const counts = { Mobile: 0, Desktop: 0, Tablet: 0 };
 
@@ -99,7 +128,7 @@ function renderRequestsChart(requests) {
         data: {
             labels: hours.map((_, i) => `${i}:00`),
             datasets: [{
-                label: "Requests / Hour",
+                label: "Requests Per Hour",
                 data: hours,
                 borderColor: "#3b82f6",
                 tension: 0.3
@@ -108,9 +137,11 @@ function renderRequestsChart(requests) {
     });
 }
 
-// -------------------------------------------------------------------
-// MONITORING LIVE UPDATE
-// -------------------------------------------------------------------
+
+/* ============================================================
+   REAL-TIME MONITORING
+   ============================================================ */
+
 async function loadMonitoring() {
     const data = await api("/api/health-full");
 
@@ -123,129 +154,134 @@ async function loadMonitoring() {
     document.getElementById("mon-eventlag").innerText = m.event_loop_lag_ms + " ms";
     document.getElementById("mon-latency").innerText = m.avg_api_latency_ms + " ms";
 
-    document.getElementById("mon-google").innerText =
-        m.external_ping.google.status + " (" + (m.external_ping.google.ping || "X") + " ms)";
-    document.getElementById("mon-cloudflare").innerText =
-        m.external_ping.cloudflare.status + " (" + (m.external_ping.cloudflare.ping || "X") + " ms)";
-    document.getElementById("mon-twitter").innerText =
-        m.external_ping.twitter.status + " (" + (m.external_ping.twitter.ping || "X") + " ms)";
-
-    const memUsed = m.system.memory.used / 1024 / 1024;
-    const memTotal = m.system.memory.total / 1024 / 1024;
-
     document.getElementById("mon-ram").innerText =
-        memUsed.toFixed(1) + "MB / " + memTotal.toFixed(1) + "MB";
+        (m.system.memory.used / 1024 / 1024).toFixed(1) +
+        "MB / " +
+        (m.system.memory.total / 1024 / 1024).toFixed(1) + "MB";
 
     document.getElementById("mon-cpu").innerText = m.system.cpu.toFixed(2);
+
+    document.getElementById("mon-google").innerText =
+        `${m.external_ping.google.status} (${m.external_ping.google.ping || "X"} ms)`;
+    document.getElementById("mon-cloudflare").innerText =
+        `${m.external_ping.cloudflare.status} (${m.external_ping.cloudflare.ping || "X"} ms)`;
+    document.getElementById("mon-twitter").innerText =
+        `${m.external_ping.twitter.status} (${m.external_ping.twitter.ping || "X"} ms)`;
 }
 
-// -------------------------------------------------------------------
-// LOAD FULL ADMIN DATA
-// -------------------------------------------------------------------
+
+/* ============================================================
+   LOAD ADMIN DATA
+   ============================================================ */
+
 async function loadAdminData() {
-    const data = await api("/api/admin/data", "GET", null, true);
+    const data = await api("/api/admin/data");
 
     if (!data.success) return alert("Invalid admin token!");
 
-    // Stats
     document.getElementById("stat-total-requests").innerText =
         data.stats.total_requests || 0;
 
     document.getElementById("stat-total-videos").innerText =
         data.stats.total_videos || 0;
 
-    // Charts
     renderDeviceChart(data.requests);
     renderRequestsChart(data.requests);
 
-    // Recent Requests Table
-    const reqTable = document.getElementById("table-requests");
-    reqTable.innerHTML = "";
-    data.requests.slice(-50).reverse().forEach(r => {
-        reqTable.innerHTML += `
-        <tr>
-            <td>${r.ip_address}</td>
-            <td>${r.device_type}</td>
-            <td>${r.browser}</td>
-            <td>${r.platform}</td>
-            <td>${r.twitter_url || "-"}</td>
-            <td>${new Date(r.created_at).toLocaleString()}</td>
-        </tr>`;
+    // Requests table
+    const reqT = document.getElementById("table-requests");
+    reqT.innerHTML = "";
+    data.requests.slice(-100).reverse().forEach(r => {
+        reqT.innerHTML += `
+            <tr>
+                <td>${r.ip_address}</td>
+                <td>${r.device_type}</td>
+                <td>${r.browser}</td>
+                <td>${r.platform}</td>
+                <td>${r.twitter_url || "-"}</td>
+                <td>${new Date(r.created_at).toLocaleString()}</td>
+            </tr>`;
     });
 
-    // Videos Table
-    const vidTable = document.getElementById("table-videos");
-    vidTable.innerHTML = "";
-    data.videos.slice(-50).reverse().forEach(v => {
-        vidTable.innerHTML += `
-        <tr>
-            <td>${v.tweet_id}</td>
-            <td>${v.author}</td>
-            <td>${v.total_downloads}</td>
-            <td>${v.tweet_date}</td>
-        </tr>`;
+    // Videos table
+    const vidT = document.getElementById("table-videos");
+    vidT.innerHTML = "";
+    data.videos.slice(-100).reverse().forEach(v => {
+        vidT.innerHTML += `
+            <tr>
+                <td>${v.tweet_id}</td>
+                <td>${v.author}</td>
+                <td>${v.total_downloads}</td>
+                <td>${v.tweet_date}</td>
+            </tr>`;
     });
 }
 
-// -------------------------------------------------------------------
-// ADMIN ACTIONS
-// -------------------------------------------------------------------
-async function banIP() {
-    const ip = prompt("Enter IP to ban:");
-    if (!ip) return;
 
-    const res = await api("/api/admin/ban", "POST", { ip }, true);
-    alert(res.success ? "Banned!" : res.error);
+/* ============================================================
+   ADMIN ACTIONS (MERGED FROM admin-api.js)
+   ============================================================ */
+
+async function banIP() {
+    const ip = document.getElementById("ban-ip-input").value.trim();
+    if (!ip) return alert("Enter IP");
+
+    const r = await api("/api/admin/ban", "POST", { ip });
+    alert(r.success ? "Banned!" : r.error);
 }
 
 async function resetStats() {
-    if (!confirm("Reset stats?")) return;
-    const r = await api("/api/admin/reset-stats", "POST", {}, true);
-    alert("Stats reset!");
+    if (!confirm("Reset ALL stats?")) return;
+    await api("/api/admin/reset-stats", "POST", {});
+    alert("Stats Reset");
+    loadAdminData();
 }
 
 async function clearRequests() {
-    if (!confirm("Delete all requests?")) return;
-    const r = await api("/api/admin/clear-requests", "POST", {}, true);
-    alert("Requests cleared!");
+    if (!confirm("Delete ALL request logs?")) return;
+    await api("/api/admin/clear-requests", "POST", {});
+    alert("Requests cleared");
+    loadAdminData();
 }
 
 async function clearVideos() {
-    if (!confirm("Delete all videos?")) return;
-    const r = await api("/api/admin/clear-videos", "POST", {}, true);
-    alert("Videos cleared!");
+    if (!confirm("Delete ALL video logs?")) return;
+    await api("/api/admin/clear-videos", "POST", {});
+    alert("Videos cleared");
+    loadAdminData();
 }
 
-// -------------------------------------------------------------------
-// LOAD LOGS
-// -------------------------------------------------------------------
 async function loadLogs() {
-    const r = await api("/api/admin/logs", "GET", null, true);
-
-    const logs = document.getElementById("logs-box");
-    logs.innerHTML = "";
+    const r = await api("/api/admin/logs");
+    const logsBox = document.getElementById("logs-box");
+    logsBox.innerHTML = "";
 
     (r.logs || []).forEach(line => {
-        logs.innerHTML += `<div class="log-line">${line}</div>`;
+        logsBox.innerHTML += `<div class="log-line">${line}</div>`;
     });
 }
 
-// -------------------------------------------------------------------
-// AUTO-REFRESH (Monitoring only)
-// -------------------------------------------------------------------
-setInterval(loadMonitoring, 1000);
 
-// -------------------------------------------------------------------
-// INIT
-// -------------------------------------------------------------------
+/* ============================================================
+   INIT
+   ============================================================ */
+
 window.onload = () => {
-    ensureAuth();
-
-    if (ADMIN_TOKEN) {
-        loadAdminData();
-        loadMonitoring();
-        loadLogs();
-
-        switchTab("dashboard");
+    if (!ADMIN_TOKEN) {
+        document.getElementById("login-screen").style.display = "flex";
+        document.getElementById("admin-panel").style.display = "none";
+        return;
     }
+
+    document.getElementById("login-screen").style.display = "none";
+    document.getElementById("admin-panel").style.display = "block";
+
+    loadAdminData();
+    loadMonitoring();
+    loadLogs();
+
+    switchTab("dashboard");
 };
+
+// Auto refresh monitoring
+setInterval(loadMonitoring, 1000);
