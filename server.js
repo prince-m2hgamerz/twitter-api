@@ -222,18 +222,21 @@ async function storeVideoData(tweetId, result) {
   }
 }
 
-// Routes - Using redirects instead
+// Serve homepage
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Serve playground properly (Vercel-safe)
 app.get('/playground', (req, res) => {
-  res.redirect('/playground.html');
+  res.sendFile(path.join(__dirname, 'public', 'playground.html'));
 });
 
+// Serve docs properly (Vercel-safe)
 app.get('/docs', (req, res) => {
-  res.redirect('/docs.html');
+  res.sendFile(path.join(__dirname, 'public', 'docs.html'));
 });
+
 
 // Main download endpoint
 app.get('/api/download', async (req, res) => {
