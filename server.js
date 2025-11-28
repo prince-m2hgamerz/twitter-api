@@ -4,7 +4,6 @@ const axios = require('axios');
 const cheerio = require('cheerio');
 const path = require('path');
 const userAgent = require('user-agents');
-const fs = require('fs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -34,39 +33,6 @@ function initializeDatabase() {
 
 // Initialize database
 const db = initializeDatabase();
-
-// Helper function to safely serve files
-function serveFileSafe(res, filename) {
-  try {
-    const filePath = path.resolve(__dirname, 'public', filename);
-    
-    // Check if file exists
-    if (fs.existsSync(filePath)) {
-      res.sendFile(filePath);
-    } else {
-      // If file doesn't exist, check if .html version exists
-      const altPath = filePath.endsWith('.html') ? filePath : filePath + '.html';
-      if (fs.existsSync(altPath)) {
-        res.sendFile(altPath);
-      } else {
-        res.status(404).json({
-          success: false,
-          error: 'Page not found',
-          author: '@m2hgamerz',
-          telegram: 'https://t.me/m2hgamerz'
-        });
-      }
-    }
-  } catch (error) {
-    console.error('Error serving file:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-      author: '@m2hgamerz',
-      telegram: 'https://t.me/m2hgamerz'
-    });
-  }
-}
 
 // Function to get client IP and device details
 function getClientInfo(req) {
@@ -256,17 +222,17 @@ async function storeVideoData(tweetId, result) {
   }
 }
 
-// Routes
+// Routes - SIMPLIFIED FOR VERCEL
 app.get('/', (req, res) => {
-  serveFileSafe(res, 'index.html');
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.get('/playground', (req, res) => {
-  serveFileSafe(res, 'playground.html');
+  res.sendFile(path.join(__dirname, 'public', 'playground.html'));
 });
 
 app.get('/docs', (req, res) => {
-  serveFileSafe(res, 'docs.html');
+  res.sendFile(path.join(__dirname, 'public', 'docs.html'));
 });
 
 // Main download endpoint
