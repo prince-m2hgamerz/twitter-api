@@ -48,8 +48,8 @@ button, input { font-family: inherit; }
 /* --- Navigation Bar --- */
 .navbar {
     background: rgba(255, 255, 255, 0.95);
-    backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
     border-bottom: 1px solid var(--border);
     height: var(--header-height);
     position: sticky;
@@ -119,6 +119,7 @@ button, input { font-family: inherit; }
     margin-bottom: 0.75rem;
     letter-spacing: -0.5px;
     background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
