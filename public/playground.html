@@ -136,18 +136,18 @@
             
             <div class="example-content">
                 <pre class="example-code" id="curl-example"><code># Download Twitter Video
-curl -X GET "http://localhost:3000/api/download?url=TWITTER_URL"
+curl -X GET "https://twitter-api-m2h.vercel.app/api/download?url=TWITTER_URL"
 
 # Get API Statistics
-curl -X GET "http://localhost:3000/api/stats"
+curl -X GET "https://twitter-api-m2h.vercel.app/api/stats"
 
 # Get Recent Requests
-curl -X GET "http://localhost:3000/api/requests/recent"</code></pre>
+curl -X GET "https://twitter-api-m2h.vercel.app/api/requests/recent"</code></pre>
 
                 <pre class="example-code" id="javascript-example"><code>// Download Twitter Video
 async function downloadTwitterVideo(url) {
   try {
-    const response = await fetch(`http://localhost:3000/api/download?url=${encodeURIComponent(url)}`);
+    const response = await fetch(`https://twitter-api-m2h.vercel.app/api/download?url=${encodeURIComponent(url)}`);
     const data = await response.json();
     console.log(data);
     return data;
@@ -164,7 +164,7 @@ downloadTwitterVideo('TWITTER_URL');</code></pre>
 def download_twitter_video(url):
     try:
         response = requests.get(
-            "http://localhost:3000/api/download",
+            "https://twitter-api-m2h.vercel.app/api/download",
             params={"url": url}
         )
         data = response.json()
@@ -179,7 +179,7 @@ download_twitter_video("TWITTER_URL")</code></pre>
                 <pre class="example-code" id="php-example"><code>&lt;?php
 
 function downloadTwitterVideo($url) {
-    $api_url = "http://localhost:3000/api/download?url=" . urlencode($url);
+    $api_url = "https://twitter-api-m2h.vercel.app/api/download?url=" . urlencode($url);
     $response = file_get_contents($api_url);
     $data = json_decode($response, true);
     return $data;
@@ -195,7 +195,7 @@ print_r($result);
 
 async function downloadTwitterVideo(url) {
   try {
-    const response = await axios.get('http://localhost:3000/api/download', {
+    const response = await axios.get('https://twitter-api-m2h.vercel.app/api/download', {
       params: { url }
     });
     console.log(response.data);
@@ -290,7 +290,7 @@ downloadTwitterVideo('TWITTER_URL');</code></pre>
         const startTime = performance.now();
         
         try {
-            let apiUrl = `http://localhost:3000${currentEndpoint}`;
+            let apiUrl = `https://twitter-api-m2h.vercel.app${currentEndpoint}`;
             if (currentEndpoint === '/api/download' && url) {
                 apiUrl += `?url=${encodeURIComponent(url)}`;
             }

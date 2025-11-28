@@ -121,20 +121,20 @@
                     <button class="code-tab" onclick="showCode('php')">PHP</button>
                 </div>
                 <div class="code-content">
-                    <pre class="code-block active" id="curl-code"><code>curl "http://localhost:3000/api/download?url=https://twitter.com/user/status/123456789"</code></pre>
-                    <pre class="code-block" id="javascript-code"><code>fetch('http://localhost:3000/api/download?url=https://twitter.com/user/status/123456789')
+                    <pre class="code-block active" id="curl-code"><code>curl "https://twitter-api-m2h.vercel.app/api/download?url=https://twitter.com/user/status/123456789"</code></pre>
+                    <pre class="code-block" id="javascript-code"><code>fetch('https://twitter-api-m2h.vercel.app/api/download?url=https://twitter.com/user/status/123456789')
   .then(response => response.json())
   .then(data => console.log(data))
   .catch(error => console.error('Error:', error));</code></pre>
                     <pre class="code-block" id="python-code"><code>import requests
 
 response = requests.get(
-    "http://localhost:3000/api/download",
+    "https://twitter-api-m2h.vercel.app/api/download",
     params={"url": "https://twitter.com/user/status/123456789"}
 )
 data = response.json()
 print(data)</code></pre>
-                    <pre class="code-block" id="php-code"><code>$url = "http://localhost:3000/api/download?url=" . 
+                    <pre class="code-block" id="php-code"><code>$url = "https://twitter-api-m2h.vercel.app/api/download?url=" . 
        urlencode("https://twitter.com/user/status/123456789");
 $response = file_get_contents($url);
 $data = json_decode($response, true);
