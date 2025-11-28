@@ -14,92 +14,25 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// Database Setup - Use SQLite locally, PostgreSQL on Railway
-let db;
-let databaseType = 'memory'; // Default to in-memory
-
-// Simple in-memory database for local development
-const memoryDB = {
+// Simple in-memory storage (resets on serverless function cold start)
+let memoryDB = {
   requests: [],
   videos: [],
-  downloadLinks: []
+  downloadLinks: [],
+  stats: {
+    totalRequests: 0,
+    totalVideos: 0
+  }
 };
 
-// Initialize database
-async function initializeDatabase() {
-  if (process.env.DATABASE_URL) {
-    // Use PostgreSQL in production (Railway)
-    try {
-      const { Pool } = require('pg');
-      const pool = new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-      });
-
-      // Test connection and create tables
-      const client = await pool.connect();
-      
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS requests (
-          id SERIAL PRIMARY KEY,
-          ip_address TEXT,
-          user_agent TEXT,
-          device_type TEXT,
-          browser TEXT,
-          platform TEXT,
-          twitter_url TEXT,
-          endpoint TEXT,
-          timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS videos (
-          id SERIAL PRIMARY KEY,
-          tweet_id TEXT UNIQUE,
-          author TEXT,
-          tweet_text TEXT,
-          tweet_date TEXT,
-          thumbnail_url TEXT,
-          total_downloads INTEGER DEFAULT 0,
-          first_fetched TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          last_fetched TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
-
-      await client.query(`
-        CREATE TABLE IF NOT EXISTS download_links (
-          id SERIAL PRIMARY KEY,
-          tweet_id TEXT,
-          download_url TEXT,
-          direct_url TEXT,
-          quality TEXT,
-          resolution TEXT,
-          type TEXT,
-          source TEXT,
-          fetch_count INTEGER DEFAULT 0
-        )
-      `);
-
-      client.release();
-      db = pool;
-      databaseType = 'postgresql';
-      console.log('PostgreSQL database initialized successfully');
-    } catch (error) {
-      console.log('PostgreSQL not available, using in-memory database:', error.message);
-      db = memoryDB;
-      databaseType = 'memory';
-    }
-  } else {
-    // Use in-memory database for local development
-    db = memoryDB;
-    databaseType = 'memory';
-    console.log('Using in-memory database for local development');
-  }
+// Initialize or load from persistent storage if available
+function initializeDatabase() {
+  console.log('Using in-memory database (serverless compatible)');
+  return memoryDB;
 }
 
-// Initialize database on startup
-initializeDatabase();
+// Initialize database
+const db = initializeDatabase();
 
 // Function to get client IP and device details
 function getClientInfo(req) {
@@ -111,16 +44,12 @@ function getClientInfo(req) {
 
   const userAgent = req.headers['user-agent'] || 'Unknown';
   
-  // Simple device detection
   let deviceType = 'Desktop';
   let browser = 'Unknown';
   let platform = 'Unknown';
 
-  if (userAgent.includes('Mobile')) {
-    deviceType = 'Mobile';
-  } else if (userAgent.includes('Tablet')) {
-    deviceType = 'Tablet';
-  }
+  if (userAgent.includes('Mobile')) deviceType = 'Mobile';
+  else if (userAgent.includes('Tablet')) deviceType = 'Tablet';
 
   if (userAgent.includes('Chrome')) browser = 'Chrome';
   else if (userAgent.includes('Firefox')) browser = 'Firefox';
@@ -147,39 +76,31 @@ async function logRequest(req, twitterUrl, endpoint) {
   const clientInfo = getClientInfo(req);
   
   try {
-    if (databaseType === 'postgresql') {
-      const query = `
-        INSERT INTO requests (ip_address, user_agent, device_type, browser, platform, twitter_url, endpoint)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
-      `;
-      await db.query(query, [
-        clientInfo.ip,
-        clientInfo.userAgent,
-        clientInfo.deviceType,
-        clientInfo.browser,
-        clientInfo.platform,
-        twitterUrl,
-        endpoint
-      ]);
-    } else {
-      // In-memory database
-      db.requests.push({
-        ip_address: clientInfo.ip,
-        user_agent: clientInfo.userAgent,
-        device_type: clientInfo.deviceType,
-        browser: clientInfo.browser,
-        platform: clientInfo.platform,
-        twitter_url: twitterUrl,
-        endpoint: endpoint,
-        timestamp: new Date().toISOString()
-      });
+    const requestData = {
+      ip_address: clientInfo.ip,
+      user_agent: clientInfo.userAgent,
+      device_type: clientInfo.deviceType,
+      browser: clientInfo.browser,
+      platform: clientInfo.platform,
+      twitter_url: twitterUrl,
+      endpoint: endpoint,
+      timestamp: new Date().toISOString()
+    };
+
+    db.requests.push(requestData);
+    db.stats.totalRequests = db.requests.length;
+    
+    // Keep only last 1000 requests to prevent memory issues
+    if (db.requests.length > 1000) {
+      db.requests = db.requests.slice(-1000);
     }
+    
   } catch (error) {
     console.error('Error logging request:', error);
   }
 }
 
-// Headers for Twitsave with random user agents
+// Headers for Twitsave
 const getTwitsaveHeaders = () => {
   const agent = new userAgent();
   return {
@@ -187,13 +108,6 @@ const getTwitsaveHeaders = () => {
     'accept-language': 'en-US,en;q=0.9',
     'cache-control': 'no-cache',
     'pragma': 'no-cache',
-    'sec-ch-ua': '"Google Chrome";v="119", "Chromium";v="119", "Not?A_Brand";v="24"',
-    'sec-ch-ua-mobile': '?0',
-    'sec-ch-ua-platform': '"Windows"',
-    'sec-fetch-dest': 'document',
-    'sec-fetch-mode': 'navigate',
-    'sec-fetch-site': 'none',
-    'upgrade-insecure-requests': '1',
     'user-agent': agent.toString()
   };
 };
@@ -222,7 +136,6 @@ function extractDownloadLinksFromTwitsave(html, twitterUrl) {
   };
 
   try {
-    // Extract tweet information
     result.tweetInfo = {
       author: $('a[href*="twitter.com"]').first().text().trim() || 'Unknown',
       text: $('p.m-2').text().trim() || '',
@@ -230,23 +143,17 @@ function extractDownloadLinksFromTwitsave(html, twitterUrl) {
       tweetUrl: $('a.text-xs').first().attr('href') || twitterUrl
     };
 
-    // Extract thumbnail from video poster
     result.thumbnail = $('video').attr('poster') || null;
-
-    // Extract video preview URL
     result.videoPreview = $('video').attr('src') || null;
 
-    // Extract download links from the table
     $('a[href*="/download?file="]').each((index, element) => {
       const $link = $(element);
       const href = $link.attr('href');
       const text = $link.find('.truncate').text().trim();
       
-      // Extract resolution from text
       const resolutionMatch = text.match(/Resolution:\s*(\d+x\d+)/i) || text.match(/(\d+x\d+)/);
       const resolution = resolutionMatch ? resolutionMatch[1] : 'unknown';
       
-      // Extract quality from resolution
       let quality = 'unknown';
       if (resolution.includes('1688x720') || resolution.includes('1280x720') || resolution.includes('1920x1080')) {
         quality = 'hd';
@@ -256,7 +163,6 @@ function extractDownloadLinksFromTwitsave(html, twitterUrl) {
         quality = 'low';
       }
 
-      // The href contains base64 encoded direct Twitter video URL
       const downloadUrl = `https://twitsave.com${href}`;
 
       result.downloadLinks.push({
@@ -269,7 +175,6 @@ function extractDownloadLinksFromTwitsave(html, twitterUrl) {
     });
 
     result.totalVideosFound = result.downloadLinks.length;
-
     return result;
 
   } catch (error) {
@@ -286,52 +191,32 @@ function extractDownloadLinksFromTwitsave(html, twitterUrl) {
 // Function to store video data in database
 async function storeVideoData(tweetId, result) {
   try {
-    if (databaseType === 'postgresql') {
-      // Check if video already exists
-      const existingVideo = await db.query(
-        'SELECT * FROM videos WHERE tweet_id = $1',
-        [tweetId]
-      );
-
-      if (existingVideo.rows.length > 0) {
-        // Update existing video
-        await db.query(
-          'UPDATE videos SET total_downloads = total_downloads + 1, last_fetched = CURRENT_TIMESTAMP WHERE tweet_id = $1',
-          [tweetId]
-        );
-
-        // Update download links fetch count
-        for (const link of result.downloadLinks) {
-          await db.query(
-            'UPDATE download_links SET fetch_count = fetch_count + 1 WHERE tweet_id = $1 AND download_url = $2',
-            [tweetId, link.url]
-          );
-        }
-      } else {
-        // Insert new video
-        await db.query(
-          `INSERT INTO videos (tweet_id, author, tweet_text, tweet_date, thumbnail_url, total_downloads)
-           VALUES ($1, $2, $3, $4, $5, 1)`,
-          [tweetId, result.tweetInfo.author, result.tweetInfo.text, result.tweetInfo.date, result.thumbnail]
-        );
-
-        // Insert download links
-        for (const link of result.downloadLinks) {
-          await db.query(
-            `INSERT INTO download_links (tweet_id, download_url, direct_url, quality, resolution, type, source, fetch_count)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, 1)`,
-            [tweetId, link.url, link.directUrl, link.quality, link.resolution, link.type, link.source]
-          );
-        }
-      }
+    const existingVideoIndex = db.videos.findIndex(v => v.tweet_id === tweetId);
+    
+    if (existingVideoIndex !== -1) {
+      // Update existing video
+      db.videos[existingVideoIndex].total_downloads += 1;
+      db.videos[existingVideoIndex].last_fetched = new Date().toISOString();
     } else {
-      // In-memory database - just log for demo
-      console.log('Video data would be stored:', {
-        tweetId,
+      // Add new video
+      db.videos.push({
+        tweet_id: tweetId,
         author: result.tweetInfo.author,
-        downloadLinks: result.downloadLinks.length
+        tweet_text: result.tweetInfo.text,
+        tweet_date: result.tweetInfo.date,
+        thumbnail_url: result.thumbnail,
+        total_downloads: 1,
+        first_fetched: new Date().toISOString(),
+        last_fetched: new Date().toISOString()
       });
+      db.stats.totalVideos = db.videos.length;
     }
+    
+    // Keep only last 500 videos to prevent memory issues
+    if (db.videos.length > 500) {
+      db.videos = db.videos.slice(-500);
+    }
+    
   } catch (error) {
     console.error('Error storing video data:', error);
   }
@@ -364,7 +249,6 @@ app.get('/api/download', async (req, res) => {
       });
     }
 
-    // Validate Twitter URL
     if (!url.includes('twitter.com/') && !url.includes('x.com/')) {
       return res.status(400).json({
         success: false,
@@ -384,20 +268,14 @@ app.get('/api/download', async (req, res) => {
       });
     }
 
-    console.log(`Fetching from Twitsave for URL: ${url}`);
-
-    // Log the request
     await logRequest(req, url, '/api/download');
 
-    // Call Twitsave API
     const twitsaveUrl = `https://twitsave.com/info?url=${encodeURIComponent(url)}`;
-    
     const response = await axios.get(twitsaveUrl, {
       headers: getTwitsaveHeaders(),
       timeout: 15000
     });
 
-    // Extract download links from HTML
     const result = extractDownloadLinksFromTwitsave(response.data, url);
 
     if (!result.success || result.downloadLinks.length === 0) {
@@ -411,10 +289,8 @@ app.get('/api/download', async (req, res) => {
       });
     }
 
-    // Store data in database
     await storeVideoData(tweetId, result);
 
-    // Prepare final response
     const finalResponse = {
       success: true,
       twitterUrl: url,
@@ -426,8 +302,7 @@ app.get('/api/download', async (req, res) => {
       videoPreview: result.videoPreview,
       author: '@m2hgamerz',
       telegram: 'https://t.me/m2hgamerz',
-      apiVersion: '2.0',
-      database: databaseType // Show which database is being used
+      apiVersion: '2.0'
     };
 
     res.json(finalResponse);
@@ -440,91 +315,68 @@ app.get('/api/download', async (req, res) => {
     
     if (error.response) {
       statusCode = error.response.status;
-      if (statusCode === 404) {
-        errorMessage = 'Tweet not found or Twitsave service unavailable';
-      } else if (statusCode === 403) {
-        errorMessage = 'Access denied by Twitsave';
-      } else if (statusCode === 429) {
-        errorMessage = 'Rate limited by Twitsave. Please try again later.';
-      }
+      if (statusCode === 404) errorMessage = 'Tweet not found';
+      else if (statusCode === 403) errorMessage = 'Access denied';
+      else if (statusCode === 429) errorMessage = 'Rate limited';
     } else if (error.code === 'ENOTFOUND') {
-      errorMessage = 'Cannot connect to Twitsave service';
-    } else if (error.code === 'ECONNABORTED') {
-      errorMessage = 'Request timeout';
+      errorMessage = 'Cannot connect to Twitsave';
     }
     
     res.status(statusCode).json({
       success: false,
       error: errorMessage,
-      code: error.code,
       author: '@m2hgamerz',
       telegram: 'https://t.me/m2hgamerz'
     });
   }
 });
 
-// Statistics endpoint
+// Statistics endpoint - FIXED
 app.get('/api/stats', async (req, res) => {
   try {
-    // Log the request
     await logRequest(req, 'STATS_REQUEST', '/api/stats');
 
-    let stats = {
-      totalRequests: 0,
-      totalVideos: 0,
-      popularVideos: [],
-      deviceStats: []
-    };
+    // Calculate device stats
+    const deviceCounts = {};
+    db.requests.forEach(req => {
+      deviceCounts[req.device_type] = (deviceCounts[req.device_type] || 0) + 1;
+    });
 
-    if (databaseType === 'postgresql') {
-      // Get total requests
-      const totalRequestsResult = await db.query('SELECT COUNT(*) as count FROM requests');
-      stats.totalRequests = parseInt(totalRequestsResult.rows[0].count);
+    const deviceStats = Object.entries(deviceCounts).map(([device_type, count]) => ({
+      device_type,
+      count
+    }));
 
-      // Get total videos
-      const totalVideosResult = await db.query('SELECT COUNT(*) as count FROM videos');
-      stats.totalVideos = parseInt(totalVideosResult.rows[0].count);
-
-      // Get popular videos
-      const popularVideosResult = await db.query(`
-        SELECT tweet_id, author, total_downloads 
-        FROM videos 
-        ORDER BY total_downloads DESC 
-        LIMIT 10
-      `);
-      stats.popularVideos = popularVideosResult.rows;
-
-      // Get device stats
-      const deviceStatsResult = await db.query(`
-        SELECT device_type, COUNT(*) as count 
-        FROM requests 
-        GROUP BY device_type
-      `);
-      stats.deviceStats = deviceStatsResult.rows;
-    } else {
-      // In-memory database stats
-      stats.totalRequests = db.requests.length;
-      stats.totalVideos = db.videos.length;
-      stats.popularVideos = db.videos.slice(0, 10);
-      
-      // Simple device stats from memory
-      const deviceCounts = {};
-      db.requests.forEach(req => {
-        deviceCounts[req.device_type] = (deviceCounts[req.device_type] || 0) + 1;
-      });
-      stats.deviceStats = Object.entries(deviceCounts).map(([device_type, count]) => ({
-        device_type,
-        count
+    // Get popular videos (top 10 by downloads)
+    const popularVideos = [...db.videos]
+      .sort((a, b) => (b.total_downloads || 0) - (a.total_downloads || 0))
+      .slice(0, 10)
+      .map(video => ({
+        tweet_id: video.tweet_id,
+        author: video.author,
+        total_downloads: video.total_downloads || 0
       }));
-    }
+
+    const stats = {
+      totalRequests: db.stats.totalRequests || 0,
+      totalVideos: db.stats.totalVideos || 0,
+      popularVideos: popularVideos,
+      deviceStats: deviceStats,
+      memoryUsage: {
+        requests: db.requests.length,
+        videos: db.videos.length
+      }
+    };
 
     res.json({
       success: true,
       statistics: stats,
-      database: databaseType,
+      database: 'memory',
+      note: 'Statistics reset on server restart (serverless environment)',
       author: '@m2hgamerz',
       telegram: 'https://t.me/m2hgamerz'
     });
+
   } catch (error) {
     console.error('Stats error:', error);
     res.status(500).json({
@@ -536,71 +388,25 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
-// Recent requests endpoint
-app.get('/api/requests/recent', async (req, res) => {
-  try {
-    let recentRequests = [];
-    
-    if (databaseType === 'postgresql') {
-      const result = await db.query(`
-        SELECT ip_address, device_type, browser, platform, twitter_url, timestamp 
-        FROM requests 
-        ORDER BY timestamp DESC 
-        LIMIT 50
-      `);
-      recentRequests = result.rows;
-    } else {
-      // In-memory database
-      recentRequests = db.requests
-        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
-        .slice(0, 50);
-    }
-
-    res.json({
-      success: true,
-      recentRequests: recentRequests,
-      total: recentRequests.length,
-      database: databaseType,
-      author: '@m2hgamerz',
-      telegram: 'https://t.me/m2hgamerz'
-    });
-  } catch (error) {
-    console.error('Recent requests error:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch recent requests',
-      author: '@m2hgamerz',
-      telegram: 'https://t.me/m2hgamerz'
-    });
-  }
-});
-
 // Health check endpoint
 app.get('/health', async (req, res) => {
   try {
-    // Log health check request
     await logRequest(req, 'HEALTH_CHECK', '/health');
 
     const healthInfo = {
       status: 'OK',
       timestamp: new Date().toISOString(),
       database: {
-        type: databaseType,
-        connected: true
+        type: 'memory',
+        connected: true,
+        totalRequests: db.stats.totalRequests || 0,
+        totalVideos: db.stats.totalVideos || 0
       },
       service: 'Twitter Video Download API',
+      environment: process.env.NODE_ENV || 'development',
       author: '@m2hgamerz',
       telegram: 'https://t.me/m2hgamerz'
     };
-
-    if (databaseType === 'postgresql') {
-      // Test database connection
-      const dbResult = await db.query('SELECT COUNT(*) as count FROM requests');
-      healthInfo.database.totalRequests = parseInt(dbResult.rows[0].count);
-    } else {
-      healthInfo.database.totalRequests = db.requests.length;
-      healthInfo.database.note = 'Using in-memory database for local development';
-    }
 
     res.json(healthInfo);
   } catch (error) {
@@ -609,9 +415,8 @@ app.get('/health', async (req, res) => {
       status: 'ERROR',
       timestamp: new Date().toISOString(),
       database: {
-        type: databaseType,
-        connected: false,
-        error: error.message
+        type: 'memory',
+        connected: false
       },
       service: 'Twitter Video Download API',
       author: '@m2hgamerz',
@@ -620,21 +425,13 @@ app.get('/health', async (req, res) => {
   }
 });
 
-// API documentation
-app.get('/api', (req, res) => {
-  res.json({
-    service: 'Twitter Video Download API',
-    version: '2.0',
-    description: 'Professional API for downloading Twitter videos',
-    database: databaseType,
+// 404 handler
+app.use('*', (req, res) => {
+  res.status(404).json({
+    success: false,
+    error: 'Endpoint not found',
     author: '@m2hgamerz',
-    telegram: 'https://t.me/m2hgamerz',
-    endpoints: {
-      '/api/download': 'Get download links for Twitter video',
-      '/api/stats': 'Get API usage statistics',
-      '/api/requests/recent': 'Get recent API requests',
-      '/health': 'Service health check'
-    }
+    telegram: 'https://t.me/m2hgamerz'
   });
 });
 
@@ -649,25 +446,7 @@ app.use((error, req, res, next) => {
   });
 });
 
-// 404 handler
-app.use('*', (req, res) => {
-  res.status(404).json({
-    success: false,
-    error: 'Endpoint not found',
-    author: '@m2hgamerz',
-    telegram: 'https://t.me/m2hgamerz'
-  });
-});
-
-// Graceful shutdown
-process.on('SIGINT', async () => {
-  console.log('Shutting down gracefully...');
-  if (db && databaseType === 'postgresql') {
-    await db.end();
-  }
-  process.exit(0);
-});
-
+// Start server
 app.listen(PORT, () => {
   console.log(`🚀 Twitter Video API running on port ${PORT}`);
   console.log(`📊 API Playground: http://localhost:${PORT}/playground`);
@@ -675,5 +454,7 @@ app.listen(PORT, () => {
   console.log(`❤️  Health Check: http://localhost:${PORT}/health`);
   console.log(`👤 Author: @m2hgamerz`);
   console.log(`📱 Telegram: https://t.me/m2hgamerz`);
-  console.log(`🗄️  Database: ${databaseType}`);
+  console.log(`🗄️  Database: In-memory (Serverless compatible)`);
 });
+
+module.exports = app;
