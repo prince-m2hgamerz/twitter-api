@@ -1,225 +1,257 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="theme-color" content="#2563eb" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>M2H Admin Panel</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>M2H Admin Panel</title>
 
-  <!-- TailwindCSS -->
-  <script src="https://cdn.tailwindcss.com"></script>
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
 
-  <!-- Material Icons -->
-  <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- Chart.js -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
-  <!-- Custom Admin Styles -->
-  <link rel="stylesheet" href="/admin.css">
+    <!-- Custom Admin CSS -->
+    <link rel="stylesheet" href="admin.css" />
+
+    <style>
+        /* Page Fade Animation */
+        body {
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0 }
+            to { opacity: 1 }
+        }
+
+        /* Smooth section transitions */
+        .admin-section {
+            animation: slideFade 0.35s ease;
+        }
+
+        @keyframes slideFade {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .glass {
+            backdrop-filter: blur(18px);
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
+        }
+    </style>
 </head>
 
-<body class="bg-gray-900 text-white overflow-hidden">
+<body class="bg-gray-900 text-white h-screen overflow-hidden">
 
-  <!-- LOGIN SCREEN -->
-  <div id="login-screen" class="fixed inset-0 bg-gray-900 flex flex-col items-center justify-center">
-    <div class="glass-card p-8 rounded-xl w-80 text-center">
-      <h1 class="text-2xl font-bold mb-6">Admin Login</h1>
+<!-- ========================= LOGIN SCREEN ========================= -->
+<div id="login-screen" class="fixed inset-0 flex items-center justify-center bg-gray-900">
+    <div class="glass p-8 w-96 rounded-xl shadow-xl text-center animate__fadeIn">
+        <h1 class="text-2xl font-bold mb-4">Admin Login</h1>
 
-      <input id="admin-key-input" 
-             type="password" 
-             placeholder="Enter Admin Key" 
-             class="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 outline-none">
+        <input id="admin-key-input"
+            type="password"
+            placeholder="Enter Admin Key"
+            class="w-full p-3 rounded-lg bg-gray-800 focus:ring-2 focus:ring-blue-500 outline-none mb-3" />
 
-      <button onclick="AdminAPI.login()" 
-              class="w-full mt-4 p-3 rounded-lg bg-blue-600 hover:bg-blue-700 transition">
-        Login
-      </button>
+        <p id="login-error" class="text-red-400 text-sm hidden mb-3"></p>
 
-      <p id="login-error" class="hidden mt-3 text-red-400 text-sm">
-        Invalid Admin Key
-      </p>
-    </div>
-  </div>
-
-
-  <!-- MAIN PANEL -->
-  <div id="admin-panel" class="hidden flex h-screen">
-
-    <!-- SIDEBAR -->
-    <aside id="sidebar" class="w-64 bg-gray-950 border-r border-gray-800 flex flex-col">
-
-      <div class="p-5 border-b border-gray-800 flex items-center space-x-3">
-        <span class="material-icons-round text-blue-500 text-3xl">admin_panel_settings</span>
-        <h2 class="text-xl font-bold">M2H Admin</h2>
-      </div>
-
-      <nav class="flex-1 overflow-y-auto">
-        <ul class="p-4 space-y-1">
-          <li><button onclick="AdminUI.switchTab('dashboard')" class="nav-item active"><span class="material-icons-round">dashboard</span>Dashboard</button></li>
-          <li><button onclick="AdminUI.switchTab('videos')" class="nav-item"><span class="material-icons-round">movie</span>Videos</button></li>
-          <li><button onclick="AdminUI.switchTab('requests')" class="nav-item"><span class="material-icons-round">list</span>Requests</button></li>
-          <li><button onclick="AdminUI.switchTab('bans')" class="nav-item"><span class="material-icons-round">block</span>Ban System</button></li>
-          <li><button onclick="AdminUI.switchTab('settings')" class="nav-item"><span class="material-icons-round">settings</span>Settings</button></li>
-          <li><button onclick="AdminUI.switchTab('logs')" class="nav-item"><span class="material-icons-round">bug_report</span>Logs</button></li>
-        </ul>
-      </nav>
-
-      <div class="p-4 border-t border-gray-800">
-        <button onclick="AdminAPI.logout()" 
-                class="w-full p-3 rounded bg-red-600 hover:bg-red-700 flex items-center justify-center space-x-2">
-          <span class="material-icons-round">logout</span><span>Logout</span>
+        <button onclick="loginAdmin()"
+            class="w-full py-3 bg-blue-600 hover:bg-blue-700 transition rounded-lg font-semibold">
+            Login
         </button>
-      </div>
+    </div>
+</div>
 
+<!-- ========================= MAIN ADMIN PANEL ========================= -->
+<div id="admin-panel" class="hidden h-full flex">
+
+    <!-- ---------- SIDEBAR ---------- -->
+    <aside class="w-64 glass p-5 flex flex-col gap-3">
+
+        <h1 class="text-2xl font-bold mb-6 text-blue-400">M2H Admin</h1>
+
+        <button id="nav-dashboard" class="nav-item active" onclick="switchTab('dashboard')">
+            <i data-lucide="layout-dashboard"></i> Dashboard
+        </button>
+
+        <button id="nav-requests" class="nav-item" onclick="switchTab('requests')">
+            <i data-lucide="list"></i> Requests
+        </button>
+
+        <button id="nav-videos" class="nav-item" onclick="switchTab('videos')">
+            <i data-lucide="video"></i> Videos
+        </button>
+
+        <button id="nav-monitor" class="nav-item" onclick="switchTab('monitor')">
+            <i data-lucide="activity"></i> Monitoring
+        </button>
+
+        <button id="nav-logs" class="nav-item" onclick="switchTab('logs')">
+            <i data-lucide="file-text"></i> Logs
+        </button>
+
+        <div class="mt-auto">
+            <button onclick="logoutAdmin()"
+                class="w-full py-3 bg-red-600 hover:bg-red-700 rounded-lg font-semibold">
+                Logout
+            </button>
+        </div>
     </aside>
 
+    <!-- ---------- MAIN CONTENT ---------- -->
+    <main class="flex-1 overflow-y-auto p-6 space-y-6">
 
-    <!-- MAIN CONTENT -->
-    <main class="flex-1 overflow-y-auto">
-      <header class="p-4 border-b border-gray-800 flex items-center justify-between backdrop-blur bg-gray-900/60">
-        <h1 id="page-title" class="text-2xl font-bold">Dashboard</h1>
-        <button onclick="AdminUI.toggleSidebar()" 
-                class="md:hidden p-2 rounded bg-gray-800">
-          <span class="material-icons-round">menu</span>
-        </button>
-      </header>
+        <!-- ==================== DASHBOARD TAB ==================== -->
+        <section id="section-dashboard" class="admin-section">
 
-      <!-- Dashboard -->
-      <section id="tab-dashboard" class="tab-page">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 p-6">
+            <h2 class="text-3xl font-bold mb-4">Dashboard Overview</h2>
 
-          <div class="dashboard-card">
-            <span class="material-icons-round text-blue-400">trending_up</span>
-            <h3>Total Requests</h3>
-            <p id="stat-total-requests" class="stat-number">0</p>
-          </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-          <div class="dashboard-card">
-            <span class="material-icons-round text-green-400">movie_filter</span>
-            <h3>Total Videos</h3>
-            <p id="stat-total-videos" class="stat-number">0</p>
-          </div>
+                <div class="glass p-5 rounded-xl">
+                    <p class="text-gray-400">Total Requests</p>
+                    <h1 id="stat-total-requests" class="text-4xl font-bold">0</h1>
+                </div>
 
-          <div class="dashboard-card">
-            <span class="material-icons-round text-purple-400">public</span>
-            <h3>Unique IPs</h3>
-            <p id="stat-unique-ips" class="stat-number">0</p>
-          </div>
+                <div class="glass p-5 rounded-xl">
+                    <p class="text-gray-400">Total Videos</p>
+                    <h1 id="stat-total-videos" class="text-4xl font-bold">0</h1>
+                </div>
 
-        </div>
+                <div class="glass p-5 rounded-xl">
+                    <p class="text-gray-400">Requests / Hour</p>
+                    <canvas id="chart-requests"></canvas>
+                </div>
+            </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
+            <div class="glass p-5 mt-6 rounded-xl">
+                <h3 class="text-xl mb-3">Device Distribution</h3>
+                <canvas id="chart-devices"></canvas>
+            </div>
+        </section>
 
-          <div class="glass-card p-4">
-            <h3 class="text-xl font-semibold mb-2">Device Analytics</h3>
-            <canvas id="chart-devices"></canvas>
-          </div>
+        <!-- ==================== REQUESTS TAB ==================== -->
+        <section id="section-requests" class="admin-section hidden">
+            <h2 class="text-3xl font-bold mb-4">Recent Requests</h2>
 
-          <div class="glass-card p-4">
-            <h3 class="text-xl font-semibold mb-2">Requests (Last 24h)</h3>
-            <canvas id="chart-requests"></canvas>
-          </div>
+            <div class="glass p-4 rounded-xl">
+                <table class="w-full text-left text-sm">
+                    <thead class="text-gray-400 border-b border-gray-700">
+                        <tr>
+                            <th>IP</th>
+                            <th>Device</th>
+                            <th>Browser</th>
+                            <th>Platform</th>
+                            <th>URL</th>
+                            <th>Time</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-requests"></tbody>
+                </table>
+            </div>
+        </section>
 
-        </div>
-      </section>
+        <!-- ==================== VIDEOS TAB ==================== -->
+        <section id="section-videos" class="admin-section hidden">
+            <h2 class="text-3xl font-bold mb-4">Videos</h2>
 
+            <div class="glass p-4 rounded-xl">
+                <table class="w-full text-left text-sm">
+                    <thead class="text-gray-400 border-b border-gray-700">
+                        <tr>
+                            <th>ID</th>
+                            <th>Author</th>
+                            <th>Downloads</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-videos"></tbody>
+                </table>
+            </div>
 
-      <!-- Videos -->
-      <section id="tab-videos" class="tab-page hidden p-6">
-        <h2 class="text-2xl font-bold mb-4">Top Downloaded Videos</h2>
-        <div id="videos-list" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"></div>
-      </section>
-
-
-      <!-- Requests -->
-      <section id="tab-requests" class="tab-page hidden p-6">
-        <h2 class="text-2xl font-bold mb-4">Recent Requests</h2>
-
-        <table class="w-full text-left border-collapse admin-table">
-          <thead>
-            <tr>
-              <th>IP</th>
-              <th>Device</th>
-              <th>Browser</th>
-              <th>Platform</th>
-              <th>Endpoint</th>
-              <th>Date</th>
-            </tr>
-          </thead>
-          <tbody id="requests-table-body"></tbody>
-        </table>
-      </section>
-
-
-      <!-- Ban System -->
-      <section id="tab-bans" class="tab-page hidden p-6">
-        <h2 class="text-2xl font-bold mb-4">Ban System</h2>
-
-        <div class="glass-card p-4 w-full md:w-1/2">
-          <h3 class="text-lg font-semibold mb-2">Ban IP Address</h3>
-
-          <input id="ban-ip-input" 
-                 type="text" 
-                 placeholder="Enter IP Address"
-                 class="w-full p-3 rounded bg-gray-800 border border-gray-700 outline-none">
-
-          <button onclick="AdminAPI.banIP()" 
-                  class="w-full mt-3 p-3 rounded bg-red-600 hover:bg-red-700">
-            Ban IP
-          </button>
-
-          <p id="ban-status" class="mt-3 text-green-400 hidden">Banned Successfully</p>
-        </div>
-      </section>
-
-
-      <!-- Settings -->
-      <section id="tab-settings" class="tab-page hidden p-6">
-
-        <h2 class="text-2xl font-bold mb-4">Admin Settings</h2>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-          <div class="glass-card p-4">
-            <h3 class="text-xl font-semibold mb-3">Theme</h3>
-            <button onclick="AdminUI.toggleTheme()" class="p-3 rounded bg-blue-600 hover:bg-blue-700">
-              Toggle Dark / Light Mode
+            <button onclick="clearVideos()"
+                class="mt-4 py-2 px-4 bg-red-600 hover:bg-red-700 rounded-lg">
+                Clear All Videos
             </button>
-          </div>
+        </section>
 
-          <div class="glass-card p-4">
-            <h3 class="text-xl font-semibold mb-3">Danger Zone</h3>
+        <!-- ==================== MONITOR TAB ==================== -->
+        <section id="section-monitor" class="admin-section hidden">
+            <h2 class="text-3xl font-bold mb-4">Real-Time Monitoring</h2>
 
-            <button onclick="AdminAPI.resetStats()" class="p-3 rounded bg-red-600 hover:bg-red-700 w-full">
-              Reset Statistics
-            </button>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-            <button onclick="AdminAPI.clearRequests()" class="p-3 mt-3 rounded bg-red-700 hover:bg-red-800 w-full">
-              Clear All Requests
-            </button>
+                <div class="glass p-5 rounded-xl">
+                    <p>Uptime</p>
+                    <h1 id="mon-uptime" class="text-3xl font-bold">--</h1>
+                </div>
 
-            <button onclick="AdminAPI.clearVideos()" class="p-3 mt-3 rounded bg-red-800 hover:bg-red-900 w-full">
-              Clear All Videos
-            </button>
-          </div>
+                <div class="glass p-5 rounded-xl">
+                    <p>Requests / Sec</p>
+                    <h1 id="mon-rps" class="text-3xl font-bold">--</h1>
+                </div>
 
-        </div>
-      </section>
+                <div class="glass p-5 rounded-xl">
+                    <p>API Latency</p>
+                    <h1 id="mon-latency" class="text-3xl font-bold">-- ms</h1>
+                </div>
 
+                <div class="glass p-5 rounded-xl">
+                    <p>Event Loop Lag</p>
+                    <h1 id="mon-eventlag" class="text-3xl font-bold">--</h1>
+                </div>
 
-      <!-- Logs -->
-      <section id="tab-logs" class="tab-page hidden p-6">
-        <h2 class="text-2xl font-bold">System Logs</h2>
-        <pre id="logs-output" class="glass-card p-4 mt-4 h-[400px] overflow-y-auto text-sm"></pre>
-      </section>
+                <div class="glass p-5 rounded-xl">
+                    <p>RAM Usage</p>
+                    <h1 id="mon-ram" class="text-2xl font-bold">--</h1>
+                </div>
 
+                <div class="glass p-5 rounded-xl">
+                    <p>CPU Load</p>
+                    <h1 id="mon-cpu" class="text-2xl font-bold">--</h1>
+                </div>
+
+                <div class="glass p-5 rounded-xl">
+                    <p>Google Ping</p>
+                    <h1 id="mon-google" class="text-xl font-bold">--</h1>
+                </div>
+
+                <div class="glass p-5 rounded-xl">
+                    <p>Cloudflare Ping</p>
+                    <h1 id="mon-cloudflare" class="text-xl font-bold">--</h1>
+                </div>
+
+                <div class="glass p-5 rounded-xl">
+                    <p>Twitter Ping</p>
+                    <h1 id="mon-twitter" class="text-xl font-bold">--</h1>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ==================== LOGS TAB ==================== -->
+        <section id="section-logs" class="admin-section hidden">
+
+            <h2 class="text-3xl font-bold mb-4">System Logs</h2>
+
+            <div class="glass p-4 rounded-xl h-96 overflow-y-auto" id="logs-box">
+                <p class="text-gray-400">Loading logs...</p>
+            </div>
+
+        </section>
     </main>
-  </div>
+</div>
 
-  <!-- SCRIPTS — correct order is IMPORTANT -->
-  <!-- <script src="/admin-api.js"></script> -->
-  <script src="/admin.js"></script>
+<script>
+    lucide.createIcons();
+</script>
+
+<script src="admin.js"></script>
 
 </body>
 </html>
