@@ -14,6 +14,25 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
 
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
         /* Page Fade Animation */
         body {
@@ -106,6 +125,25 @@
             background: rgba(255, 255, 255, 0.03);
         }
 
+        /* Mobile sidebar */
+        .mobile-sidebar {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .mobile-sidebar.open {
+            transform: translateX(0);
+        }
+
+        /* Responsive table */
+        @media (max-width: 768px) {
+            .responsive-table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
+            }
+        }
+
         /* Loading animation */
         .loading-dots:after {
             content: '.';
@@ -125,7 +163,7 @@
 
 <!-- ========================= LOGIN SCREEN ========================= -->
 <div id="login-screen" class="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 z-50">
-    <div class="glass p-10 w-96 rounded-2xl shadow-2xl text-center animate__fadeIn">
+    <div class="glass p-6 sm:p-10 w-11/12 sm:w-96 rounded-2xl shadow-2xl text-center animate__fadeIn">
         <div class="flex justify-center mb-6">
             <div class="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
                 <i data-lucide="shield" class="text-white"></i>
@@ -153,8 +191,8 @@
 <!-- ========================= MAIN ADMIN PANEL ========================= -->
 <div id="admin-panel" class="hidden h-full flex">
 
-    <!-- ---------- SIDEBAR ---------- -->
-    <aside class="w-64 glass p-6 flex flex-col gap-2 border-r border-gray-800">
+    <!-- ---------- SIDEBAR (Desktop) ---------- -->
+    <aside class="hidden lg:flex w-64 glass p-6 flex-col gap-2 border-r border-gray-800">
         <div class="flex items-center gap-3 mb-8">
             <div class="w-10 h-10 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
                 <i data-lucide="shield" class="text-white"></i>
@@ -207,16 +245,78 @@
         </div>
     </aside>
 
-    <!-- ---------- MAIN CONTENT ---------- -->
-    <main class="flex-1 overflow-y-auto p-8 space-y-8 bg-gradient-to-br from-gray-900 to-gray-800">
+    <!-- ---------- MOBILE HEADER ---------- -->
+    <div class="lg:hidden fixed top-0 left-0 right-0 z-40 glass p-4 border-b border-gray-800">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <button id="mobile-menu-toggle" class="p-2 rounded-lg bg-gray-800/50" title="Toggle menu">
+                    <i data-lucide="menu" class="w-5 h-5"></i>
+                </button>
+                <h1 class="text-lg font-bold">M2H Admin</h1>
+            </div>
+            <div class="flex items-center gap-2 text-sm text-gray-400">
+                <i data-lucide="clock" class="w-4 h-4"></i>
+                <span id="mobile-current-time">--:--:--</span>
+            </div>
+        </div>
+    </div>
 
+    <!-- ---------- MOBILE SIDEBAR ---------- -->
+    <aside id="mobile-sidebar" class="mobile-sidebar lg:hidden fixed inset-y-0 left-0 z-50 w-64 glass p-6 flex-col gap-2 border-r border-gray-800 pt-16">
+        <nav class="flex flex-col gap-1 mt-4">
+            <button id="mobile-nav-dashboard" class="nav-item active flex items-center gap-3 py-3 px-4 rounded-lg" onclick="switchTab('dashboard')">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i> 
+                <span>Dashboard</span>
+            </button>
+
+            <button id="mobile-nav-requests" class="nav-item flex items-center gap-3 py-3 px-4 rounded-lg" onclick="switchTab('requests')">
+                <i data-lucide="list" class="w-5 h-5"></i> 
+                <span>Requests</span>
+            </button>
+
+            <button id="mobile-nav-videos" class="nav-item flex items-center gap-3 py-3 px-4 rounded-lg" onclick="switchTab('videos')">
+                <i data-lucide="video" class="w-5 h-5"></i> 
+                <span>Videos</span>
+            </button>
+
+            <button id="mobile-nav-monitor" class="nav-item flex items-center gap-3 py-3 px-4 rounded-lg" onclick="switchTab('monitor')">
+                <i data-lucide="activity" class="w-5 h-5"></i> 
+                <span>Monitoring</span>
+            </button>
+
+            <button id="mobile-nav-logs" class="nav-item flex items-center gap-3 py-3 px-4 rounded-lg" onclick="switchTab('logs')">
+                <i data-lucide="file-text" class="w-5 h-5"></i> 
+                <span>Logs</span>
+            </button>
+        </nav>
+
+        <div class="mt-auto pt-4 border-t border-gray-800">
+            <div class="flex items-center gap-3 mb-4 px-4 py-2 rounded-lg bg-gray-800/50">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                    <i data-lucide="user" class="w-4 h-4 text-white"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-medium">Administrator</p>
+                    <p class="text-xs text-gray-400">Online</p>
+                </div>
+            </div>
+            <button onclick="logoutAdmin()"
+                class="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 rounded-lg font-medium transition-all">
+                <i data-lucide="log-out" class="w-4 h-4"></i>
+                Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- ---------- MAIN CONTENT ---------- -->
+    <main class="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6 lg:space-y-8 bg-gradient-to-br from-gray-900 to-gray-800 mt-16 lg:mt-0">
         <!-- ==================== DASHBOARD TAB ==================== -->
         <section id="section-dashboard" class="admin-section">
 
-            <div class="flex justify-between items-center mb-8">
+            <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 lg:mb-8 gap-4">
                 <div>
-                    <h2 class="text-3xl font-bold">Dashboard Overview</h2>
-                    <p class="text-gray-400 mt-2">Welcome back! Here's what's happening with your system.</p>
+                    <h2 class="text-2xl lg:text-3xl font-bold">Dashboard Overview</h2>
+                    <p class="text-gray-400 mt-2 text-sm lg:text-base">Welcome back! Here's what's happening with your system.</p>
                 </div>
                 <div class="flex items-center gap-2 text-sm text-gray-400">
                     <i data-lucide="clock" class="w-4 h-4"></i>
@@ -224,15 +324,15 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="stat-card glass p-6 rounded-2xl">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-6 lg:mb-8">
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <p class="text-gray-400 text-sm">Total Requests</p>
-                            <h1 id="stat-total-requests" class="text-4xl font-bold mt-2">0</h1>
+                            <h1 id="stat-total-requests" class="text-3xl lg:text-4xl font-bold mt-2">0</h1>
                         </div>
-                        <div class="p-3 rounded-xl bg-blue-500/20 text-blue-400">
-                            <i data-lucide="trending-up" class="w-6 h-6"></i>
+                        <div class="p-2 lg:p-3 rounded-xl bg-blue-500/20 text-blue-400">
+                            <i data-lucide="trending-up" class="w-5 lg:w-6 h-5 lg:h-6"></i>
                         </div>
                     </div>
                     <p class="text-green-400 text-sm flex items-center gap-1">
@@ -241,14 +341,14 @@
                     </p>
                 </div>
 
-                <div class="stat-card glass p-6 rounded-2xl">
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <p class="text-gray-400 text-sm">Total Videos</p>
-                            <h1 id="stat-total-videos" class="text-4xl font-bold mt-2">0</h1>
+                            <h1 id="stat-total-videos" class="text-3xl lg:text-4xl font-bold mt-2">0</h1>
                         </div>
-                        <div class="p-3 rounded-xl bg-purple-500/20 text-purple-400">
-                            <i data-lucide="video" class="w-6 h-6"></i>
+                        <div class="p-2 lg:p-3 rounded-xl bg-purple-500/20 text-purple-400">
+                            <i data-lucide="video" class="w-5 lg:w-6 h-5 lg:h-6"></i>
                         </div>
                     </div>
                     <p class="text-green-400 text-sm flex items-center gap-1">
@@ -257,14 +357,14 @@
                     </p>
                 </div>
 
-                <div class="stat-card glass p-6 rounded-2xl">
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <p class="text-gray-400 text-sm">Active Users</p>
-                            <h1 id="stat-active-users" class="text-4xl font-bold mt-2">0</h1>
+                            <h1 id="stat-active-users" class="text-3xl lg:text-4xl font-bold mt-2">0</h1>
                         </div>
-                        <div class="p-3 rounded-xl bg-green-500/20 text-green-400">
-                            <i data-lucide="users" class="w-6 h-6"></i>
+                        <div class="p-2 lg:p-3 rounded-xl bg-green-500/20 text-green-400">
+                            <i data-lucide="users" class="w-5 lg:w-6 h-5 lg:h-6"></i>
                         </div>
                     </div>
                     <p class="text-green-400 text-sm flex items-center gap-1">
@@ -274,10 +374,10 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div class="glass p-6 rounded-2xl">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-xl font-semibold">Requests / Hour</h3>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+                <div class="glass p-4 lg:p-6 rounded-2xl">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 lg:mb-6 gap-2">
+                        <h3 class="text-lg lg:text-xl font-semibold">Requests / Hour</h3>
                         <div class="flex gap-2">
                             <button class="text-xs px-3 py-1 rounded-lg bg-gray-800 text-gray-300">24H</button>
                             <button class="text-xs px-3 py-1 rounded-lg bg-blue-600 text-white">7D</button>
@@ -287,8 +387,8 @@
                     <canvas id="chart-requests" height="250"></canvas>
                 </div>
 
-                <div class="glass p-6 rounded-2xl">
-                    <h3 class="text-xl font-semibold mb-6">Device Distribution</h3>
+                <div class="glass p-4 lg:p-6 rounded-2xl">
+                    <h3 class="text-lg lg:text-xl font-semibold mb-4 lg:mb-6">Device Distribution</h3>
                     <canvas id="chart-devices" height="250"></canvas>
                 </div>
             </div>
@@ -296,17 +396,17 @@
 
         <!-- ==================== REQUESTS TAB ==================== -->
         <section id="section-requests" class="admin-section hidden">
-            <div class="flex justify-between items-center mb-8">
+            <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 lg:mb-8 gap-4">
                 <div>
-                    <h2 class="text-3xl font-bold">Recent Requests</h2>
-                    <p class="text-gray-400 mt-2">Monitor and analyze incoming requests to your system.</p>
+                    <h2 class="text-2xl lg:text-3xl font-bold">Recent Requests</h2>
+                    <p class="text-gray-400 mt-2 text-sm lg:text-base">Monitor and analyze incoming requests to your system.</p>
                 </div>
                 <div class="flex gap-3">
-                    <button class="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition">
+                    <button class="flex items-center gap-2 px-3 lg:px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition text-sm lg:text-base">
                         <i data-lucide="filter" class="w-4 h-4"></i>
                         Filter
                     </button>
-                    <button class="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 transition">
+                    <button class="flex items-center gap-2 px-3 lg:px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 transition text-sm lg:text-base">
                         <i data-lucide="refresh-cw" class="w-4 h-4"></i>
                         Refresh
                     </button>
@@ -314,16 +414,16 @@
             </div>
 
             <div class="glass rounded-2xl overflow-hidden">
-                <div class="overflow-x-auto">
+                <div class="responsive-table overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead class="bg-gray-800/50 text-gray-400">
                             <tr>
-                                <th class="py-4 px-6 text-left">IP</th>
-                                <th class="py-4 px-6 text-left">Device</th>
-                                <th class="py-4 px-6 text-left">Browser</th>
-                                <th class="py-4 px-6 text-left">Platform</th>
-                                <th class="py-4 px-6 text-left">URL</th>
-                                <th class="py-4 px-6 text-left">Time</th>
+                                <th class="py-3 px-4 lg:px-6 text-left">IP</th>
+                                <th class="py-3 px-4 lg:px-6 text-left">Device</th>
+                                <th class="py-3 px-4 lg:px-6 text-left hidden sm:table-cell">Browser</th>
+                                <th class="py-3 px-4 lg:px-6 text-left hidden md:table-cell">Platform</th>
+                                <th class="py-3 px-4 lg:px-6 text-left">URL</th>
+                                <th class="py-3 px-4 lg:px-6 text-left">Time</th>
                             </tr>
                         </thead>
                         <tbody id="table-requests" class="divide-y divide-gray-800">
@@ -331,15 +431,15 @@
                         </tbody>
                     </table>
                 </div>
-                <div class="p-4 border-t border-gray-800 flex justify-between items-center">
+                <div class="p-4 border-t border-gray-800 flex flex-col sm:flex-row justify-between items-center gap-4">
                     <p class="text-gray-400 text-sm">Showing 1-10 of 247 requests</p>
                     <div class="flex gap-2">
                         <button class="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition" title="Previous page">
                             <i data-lucide="chevron-left" class="w-4 h-4"></i>
                         </button>
                         <button class="p-2 rounded-lg bg-blue-600 text-white">1</button>
-                        <button class="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition" title="Page 2">2</button>
-                        <button class="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition" title="Page 3">3</button>
+                        <button class="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition">2</button>
+                        <button class="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition">3</button>
                         <button class="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition" title="Next page">
                             <i data-lucide="chevron-right" class="w-4 h-4"></i>
                         </button>
@@ -350,18 +450,18 @@
 
         <!-- ==================== VIDEOS TAB ==================== -->
         <section id="section-videos" class="admin-section hidden">
-            <div class="flex justify-between items-center mb-8">
+            <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 lg:mb-8 gap-4">
                 <div>
-                    <h2 class="text-3xl font-bold">Videos</h2>
-                    <p class="text-gray-400 mt-2">Manage and monitor video content in your system.</p>
+                    <h2 class="text-2xl lg:text-3xl font-bold">Videos</h2>
+                    <p class="text-gray-400 mt-2 text-sm lg:text-base">Manage and monitor video content in your system.</p>
                 </div>
                 <div class="flex gap-3">
-                    <button class="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition">
+                    <button class="flex items-center gap-2 px-3 lg:px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition text-sm lg:text-base">
                         <i data-lucide="upload" class="w-4 h-4"></i>
                         Upload
                     </button>
                     <button onclick="clearVideos()"
-                        class="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 transition">
+                        class="flex items-center gap-2 px-3 lg:px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 transition text-sm lg:text-base">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                         Clear All Videos
                     </button>
@@ -369,15 +469,15 @@
             </div>
 
             <div class="glass rounded-2xl overflow-hidden">
-                <div class="overflow-x-auto">
+                <div class="responsive-table overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead class="bg-gray-800/50 text-gray-400">
                             <tr>
-                                <th class="py-4 px-6 text-left">ID</th>
-                                <th class="py-4 px-6 text-left">Author</th>
-                                <th class="py-4 px-6 text-left">Downloads</th>
-                                <th class="py-4 px-6 text-left">Date</th>
-                                <th class="py-4 px-6 text-left">Actions</th>
+                                <th class="py-3 px-4 lg:px-6 text-left">ID</th>
+                                <th class="py-3 px-4 lg:px-6 text-left">Author</th>
+                                <th class="py-3 px-4 lg:px-6 text-left">Downloads</th>
+                                <th class="py-3 px-4 lg:px-6 text-left hidden sm:table-cell">Date</th>
+                                <th class="py-3 px-4 lg:px-6 text-left">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="table-videos" class="divide-y divide-gray-800">
@@ -390,10 +490,10 @@
 
         <!-- ==================== MONITOR TAB ==================== -->
         <section id="section-monitor" class="admin-section hidden">
-            <div class="flex justify-between items-center mb-8">
+            <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 lg:mb-8 gap-4">
                 <div>
-                    <h2 class="text-3xl font-bold">Real-Time Monitoring</h2>
-                    <p class="text-gray-400 mt-2">Live system performance and health metrics.</p>
+                    <h2 class="text-2xl lg:text-3xl font-bold">Real-Time Monitoring</h2>
+                    <p class="text-gray-400 mt-2 text-sm lg:text-base">Live system performance and health metrics.</p>
                 </div>
                 <div class="flex items-center gap-2 text-sm">
                     <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
@@ -401,121 +501,121 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-                <div class="stat-card glass p-6 rounded-2xl">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-6 lg:mb-8">
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <p class="text-gray-400 text-sm">Uptime</p>
-                            <h1 id="mon-uptime" class="text-3xl font-bold mt-2">--</h1>
+                            <h1 id="mon-uptime" class="text-2xl lg:text-3xl font-bold mt-2">--</h1>
                         </div>
-                        <div class="p-3 rounded-xl bg-green-500/20 text-green-400">
-                            <i data-lucide="clock" class="w-6 h-6"></i>
+                        <div class="p-2 lg:p-3 rounded-xl bg-green-500/20 text-green-400">
+                            <i data-lucide="clock" class="w-5 lg:w-6 h-5 lg:h-6"></i>
                         </div>
                     </div>
                     <p class="text-gray-400 text-xs">Time since last restart</p>
                 </div>
 
-                <div class="stat-card glass p-6 rounded-2xl">
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <p class="text-gray-400 text-sm">Requests / Sec</p>
-                            <h1 id="mon-rps" class="text-3xl font-bold mt-2">--</h1>
+                            <h1 id="mon-rps" class="text-2xl lg:text-3xl font-bold mt-2">--</h1>
                         </div>
-                        <div class="p-3 rounded-xl bg-blue-500/20 text-blue-400">
-                            <i data-lucide="activity" class="w-6 h-6"></i>
+                        <div class="p-2 lg:p-3 rounded-xl bg-blue-500/20 text-blue-400">
+                            <i data-lucide="activity" class="w-5 lg:w-6 h-5 lg:h-6"></i>
                         </div>
                     </div>
                     <p class="text-gray-400 text-xs">Current request rate</p>
                 </div>
 
-                <div class="stat-card glass p-6 rounded-2xl">
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <p class="text-gray-400 text-sm">API Latency</p>
-                            <h1 id="mon-latency" class="text-3xl font-bold mt-2">-- ms</h1>
+                            <h1 id="mon-latency" class="text-2xl lg:text-3xl font-bold mt-2">-- ms</h1>
                         </div>
-                        <div class="p-3 rounded-xl bg-yellow-500/20 text-yellow-400">
-                            <i data-lucide="gauge" class="w-6 h-6"></i>
+                        <div class="p-2 lg:p-3 rounded-xl bg-yellow-500/20 text-yellow-400">
+                            <i data-lucide="gauge" class="w-5 lg:w-6 h-5 lg:h-6"></i>
                         </div>
                     </div>
                     <p class="text-gray-400 text-xs">Average response time</p>
                 </div>
 
-                <div class="stat-card glass p-6 rounded-2xl">
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <p class="text-gray-400 text-sm">Event Loop Lag</p>
-                            <h1 id="mon-eventlag" class="text-3xl font-bold mt-2">--</h1>
+                            <h1 id="mon-eventlag" class="text-2xl lg:text-3xl font-bold mt-2">--</h1>
                         </div>
-                        <div class="p-3 rounded-xl bg-purple-500/20 text-purple-400">
-                            <i data-lucide="rotate-cw" class="w-6 h-6"></i>
+                        <div class="p-2 lg:p-3 rounded-xl bg-purple-500/20 text-purple-400">
+                            <i data-lucide="rotate-cw" class="w-5 lg:w-6 h-5 lg:h-6"></i>
                         </div>
                     </div>
                     <p class="text-gray-400 text-xs">Node.js event loop delay</p>
                 </div>
 
-                <div class="stat-card glass p-6 rounded-2xl">
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <p class="text-gray-400 text-sm">RAM Usage</p>
-                            <h1 id="mon-ram" class="text-2xl font-bold mt-2">--</h1>
+                            <h1 id="mon-ram" class="text-xl lg:text-2xl font-bold mt-2">--</h1>
                         </div>
-                        <div class="p-3 rounded-xl bg-red-500/20 text-red-400">
-                            <i data-lucide="hard-drive" class="w-6 h-6"></i>
+                        <div class="p-2 lg:p-3 rounded-xl bg-red-500/20 text-red-400">
+                            <i data-lucide="hard-drive" class="w-5 lg:w-6 h-5 lg:h-6"></i>
                         </div>
                     </div>
                     <p class="text-gray-400 text-xs">Memory consumption</p>
                 </div>
 
-                <div class="stat-card glass p-6 rounded-2xl">
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <p class="text-gray-400 text-sm">CPU Load</p>
-                            <h1 id="mon-cpu" class="text-2xl font-bold mt-2">--</h1>
+                            <h1 id="mon-cpu" class="text-xl lg:text-2xl font-bold mt-2">--</h1>
                         </div>
-                        <div class="p-3 rounded-xl bg-orange-500/20 text-orange-400">
-                            <i data-lucide="cpu" class="w-6 h-6"></i>
+                        <div class="p-2 lg:p-3 rounded-xl bg-orange-500/20 text-orange-400">
+                            <i data-lucide="cpu" class="w-5 lg:w-6 h-5 lg:h-6"></i>
                         </div>
                     </div>
                     <p class="text-gray-400 text-xs">Processor utilization</p>
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="stat-card glass p-6 rounded-2xl">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <p class="text-gray-400 text-sm">Google Ping</p>
-                            <h1 id="mon-google" class="text-xl font-bold mt-2">--</h1>
+                            <h1 id="mon-google" class="text-lg lg:text-xl font-bold mt-2">--</h1>
                         </div>
-                        <div class="p-3 rounded-xl bg-blue-500/20 text-blue-400">
-                            <i data-lucide="globe" class="w-6 h-6"></i>
+                        <div class="p-2 lg:p-3 rounded-xl bg-blue-500/20 text-blue-400">
+                            <i data-lucide="globe" class="w-5 lg:w-6 h-5 lg:h-6"></i>
                         </div>
                     </div>
                     <p class="text-gray-400 text-xs">Response time to google.com</p>
                 </div>
 
-                <div class="stat-card glass p-6 rounded-2xl">
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <p class="text-gray-400 text-sm">Cloudflare Ping</p>
-                            <h1 id="mon-cloudflare" class="text-xl font-bold mt-2">--</h1>
+                            <h1 id="mon-cloudflare" class="text-lg lg:text-xl font-bold mt-2">--</h1>
                         </div>
-                        <div class="p-3 rounded-xl bg-orange-500/20 text-orange-400">
-                            <i data-lucide="cloud" class="w-6 h-6"></i>
+                        <div class="p-2 lg:p-3 rounded-xl bg-orange-500/20 text-orange-400">
+                            <i data-lucide="cloud" class="w-5 lg:w-6 h-5 lg:h-6"></i>
                         </div>
                     </div>
                     <p class="text-gray-400 text-xs">Response time to cloudflare.com</p>
                 </div>
 
-                <div class="stat-card glass p-6 rounded-2xl">
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
                     <div class="flex justify-between items-start mb-4">
                         <div>
                             <p class="text-gray-400 text-sm">Twitter Ping</p>
-                            <h1 id="mon-twitter" class="text-xl font-bold mt-2">--</h1>
+                            <h1 id="mon-twitter" class="text-lg lg:text-xl font-bold mt-2">--</h1>
                         </div>
-                        <div class="p-3 rounded-xl bg-sky-500/20 text-sky-400">
-                            <i data-lucide="message-circle" class="w-6 h-6"></i>
+                        <div class="p-2 lg:p-3 rounded-xl bg-sky-500/20 text-sky-400">
+                            <i data-lucide="message-circle" class="w-5 lg:w-6 h-5 lg:h-6"></i>
                         </div>
                     </div>
                     <p class="text-gray-400 text-xs">Response time to twitter.com</p>
@@ -525,17 +625,17 @@
 
         <!-- ==================== LOGS TAB ==================== -->
         <section id="section-logs" class="admin-section hidden">
-            <div class="flex justify-between items-center mb-8">
+            <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 lg:mb-8 gap-4">
                 <div>
-                    <h2 class="text-3xl font-bold">System Logs</h2>
-                    <p class="text-gray-400 mt-2">Monitor system events and error logs in real-time.</p>
+                    <h2 class="text-2xl lg:text-3xl font-bold">System Logs</h2>
+                    <p class="text-gray-400 mt-2 text-sm lg:text-base">Monitor system events and error logs in real-time.</p>
                 </div>
                 <div class="flex gap-3">
-                    <button class="flex items-center gap-2 px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition">
+                    <button class="flex items-center gap-2 px-3 lg:px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition text-sm lg:text-base">
                         <i data-lucide="download" class="w-4 h-4"></i>
                         Export
                     </button>
-                    <button class="flex items-center gap-2 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 transition">
+                    <button class="flex items-center gap-2 px-3 lg:px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 transition text-sm lg:text-base">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
                         Clear Logs
                     </button>
@@ -543,13 +643,13 @@
             </div>
 
             <div class="glass rounded-2xl overflow-hidden">
-                <div class="p-4 border-b border-gray-800 flex gap-4">
-                    <button class="text-sm px-3 py-1 rounded-lg bg-blue-600 text-white">All</button>
-                    <button class="text-sm px-3 py-1 rounded-lg bg-gray-800 text-gray-300">Info</button>
-                    <button class="text-sm px-3 py-1 rounded-lg bg-gray-800 text-gray-300">Warnings</button>
-                    <button class="text-sm px-3 py-1 rounded-lg bg-gray-800 text-gray-300">Errors</button>
+                <div class="p-4 border-b border-gray-800 flex gap-2 overflow-x-auto">
+                    <button class="text-sm px-3 py-1 rounded-lg bg-blue-600 text-white whitespace-nowrap">All</button>
+                    <button class="text-sm px-3 py-1 rounded-lg bg-gray-800 text-gray-300 whitespace-nowrap">Info</button>
+                    <button class="text-sm px-3 py-1 rounded-lg bg-gray-800 text-gray-300 whitespace-nowrap">Warnings</button>
+                    <button class="text-sm px-3 py-1 rounded-lg bg-gray-800 text-gray-300 whitespace-nowrap">Errors</button>
                 </div>
-                <div class="h-96 overflow-y-auto p-4 font-mono text-sm" id="logs-box">
+                <div class="h-64 lg:h-96 overflow-y-auto p-4 font-mono text-sm" id="logs-box">
                     <p class="text-gray-400">Loading logs...</p>
                 </div>
             </div>
@@ -560,14 +660,123 @@
 <script>
     lucide.createIcons();
     
+    // Mobile sidebar toggle
+    document.getElementById('mobile-menu-toggle').addEventListener('click', function() {
+        document.getElementById('mobile-sidebar').classList.toggle('open');
+    });
+    
+    // Close mobile sidebar when clicking outside
+    document.addEventListener('click', function(event) {
+        const sidebar = document.getElementById('mobile-sidebar');
+        const toggle = document.getElementById('mobile-menu-toggle');
+        
+        if (!sidebar.contains(event.target) && !toggle.contains(event.target) && sidebar.classList.contains('open')) {
+            sidebar.classList.remove('open');
+        }
+    });
+    
     // Update current time
     function updateTime() {
         const now = new Date();
         document.getElementById('current-time').textContent = now.toLocaleTimeString();
+        document.getElementById('mobile-current-time').textContent = now.toLocaleTimeString();
     }
     
     setInterval(updateTime, 1000);
     updateTime();
+    
+    // Tab switching function
+    function switchTab(tabName) {
+        // Hide all sections
+        document.querySelectorAll('.admin-section').forEach(section => {
+            section.classList.add('hidden');
+        });
+        
+        // Remove active class from all nav items
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        
+        // Show selected section
+        document.getElementById(`section-${tabName}`).classList.remove('hidden');
+        
+        // Set active class on selected nav item (both desktop and mobile)
+        document.getElementById(`nav-${tabName}`).classList.add('active');
+        document.getElementById(`mobile-nav-${tabName}`).classList.add('active');
+        
+        // Close mobile sidebar after selection
+        document.getElementById('mobile-sidebar').classList.remove('open');
+    }
+    
+    // Demo data for charts (replace with actual data from your backend)
+    function initializeCharts() {
+        // Requests chart
+        const requestsCtx = document.getElementById('chart-requests').getContext('2d');
+        new Chart(requestsCtx, {
+            type: 'line',
+            data: {
+                labels: ['12AM', '3AM', '6AM', '9AM', '12PM', '3PM', '6PM', '9PM'],
+                datasets: [{
+                    label: 'Requests',
+                    data: [12, 19, 3, 5, 2, 3, 15, 8],
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Devices chart
+        const devicesCtx = document.getElementById('chart-devices').getContext('2d');
+        new Chart(devicesCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Desktop', 'Mobile', 'Tablet'],
+                datasets: [{
+                    data: [60, 30, 10],
+                    backgroundColor: [
+                        '#3b82f6',
+                        '#8b5cf6',
+                        '#10b981'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+    
+    // Initialize charts when the page loads
+    document.addEventListener('DOMContentLoaded', initializeCharts);
 </script>
 
 <script src="admin.js"></script>
