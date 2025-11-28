@@ -1,3 +1,7 @@
+// ------------------------------------------------------------
+// FULL ORIGINAL FUNCTIONALITY RESTORED + VERCEL COMPATIBLE
+// ------------------------------------------------------------
+
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
@@ -7,72 +11,110 @@ const userAgent = require('user-agents');
 
 const app = express();
 
-// Middleware
+// MIDDLEWARE
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, "../public"))); // Serve static files from public/
+app.use(express.static(path.join(__dirname, "../public"))); // static files
 
-// ---------------------------
-// In-memory database
-// ---------------------------
+
+// ------------------------------------------------------------
+//  IN-MEMORY DATABASE  (original functionality preserved)
+// ------------------------------------------------------------
 let memoryDB = {
   requests: [],
   videos: [],
+  downloadLinks: [],
   stats: {
     totalRequests: 0,
     totalVideos: 0
   }
 };
 
-// ---------------------------
-// Helpers
-// ---------------------------
+
+// ------------------------------------------------------------
+//  CLIENT INFO (FULL original fields restored)
+// ------------------------------------------------------------
 function getClientInfo(req) {
-  const ip = req.headers['x-forwarded-for'] ||
-    req.headers['x-real-ip'] ||
-    req.connection.remoteAddress || "unknown";
+  const ip =
+    req.headers["x-forwarded-for"] ||
+    req.headers["x-real-ip"] ||
+    req.connection?.remoteAddress ||
+    req.socket?.remoteAddress ||
+    "unknown";
 
-  const agent = req.headers['user-agent'] || "Unknown";
+  const ua = req.headers["user-agent"] || "Unknown";
 
-  let deviceType = 'Desktop';
-  if (agent.includes("Mobile")) deviceType = "Mobile";
-  if (agent.includes("Tablet")) deviceType = "Tablet";
+  let deviceType = "Desktop";
+  if (ua.includes("Mobile")) deviceType = "Mobile";
+  if (ua.includes("Tablet")) deviceType = "Tablet";
+
+  let browser = "Unknown";
+  if (ua.includes("Chrome")) browser = "Chrome";
+  else if (ua.includes("Firefox")) browser = "Firefox";
+  else if (ua.includes("Safari")) browser = "Safari";
+  else if (ua.includes("Edge")) browser = "Edge";
+
+  let platform = "Unknown";
+  if (ua.includes("Windows")) platform = "Windows";
+  else if (ua.includes("Mac")) platform = "Mac";
+  else if (ua.includes("Linux")) platform = "Linux";
+  else if (ua.includes("Android")) platform = "Android";
+  else if (ua.includes("iPhone")) platform = "iOS";
 
   return {
     ip: ip.split(",")[0].trim(),
-    userAgent: agent,
-    deviceType
+    user_agent: ua,
+    device_type: deviceType,
+    browser: browser,
+    platform: platform
   };
 }
 
+
+// ------------------------------------------------------------
+// LOG REQUEST  (original functionality preserved)
+// ------------------------------------------------------------
 async function logRequest(req, twitterUrl, endpoint) {
   const info = getClientInfo(req);
 
-  memoryDB.requests.push({
-    ip: info.ip,
-    user_agent: info.userAgent,
-    device: info.deviceType,
-    endpoint: endpoint,
+  const obj = {
+    ip_address: info.ip,
+    user_agent: info.user_agent,
+    device_type: info.device_type,
+    browser: info.browser,
+    platform: info.platform,
     twitter_url: twitterUrl,
+    endpoint: endpoint,
     timestamp: new Date().toISOString()
-  });
+  };
 
+  memoryDB.requests.push(obj);
   memoryDB.stats.totalRequests = memoryDB.requests.length;
 
   if (memoryDB.requests.length > 1000) {
-    memoryDB.requests = memoryDB.requests.slice(-500);
+    memoryDB.requests = memoryDB.requests.slice(-700);
   }
 }
 
+
+// ------------------------------------------------------------
+// TWITSAVE HEADERS
+// ------------------------------------------------------------
 function getTwitsaveHeaders() {
   const agent = new userAgent();
   return {
     "accept": "*/*",
-    "user-agent": agent.toString()
+    "user-agent": agent.toString(),
+    "cache-control": "no-cache",
+    "pragma": "no-cache"
   };
 }
 
+
+// ------------------------------------------------------------
+// EXTRACT TWEET ID
+// ------------------------------------------------------------
 function getTweetId(url) {
   try {
     const match = url.match(/status\/(\d+)/);
@@ -82,12 +124,16 @@ function getTweetId(url) {
   }
 }
 
+
+// ------------------------------------------------------------
+// PARSE TWITSAVE HTML (original functionality preserved)
+// ------------------------------------------------------------
 function extractDownloadLinksFromTwitsave(html, twitterUrl) {
   const $ = cheerio.load(html);
 
-  let result = {
+  const result = {
     success: true,
-    twitterUrl,
+    twitterUrl: twitterUrl,
     tweetInfo: {},
     downloadLinks: [],
     thumbnail: null,
@@ -103,26 +149,28 @@ function extractDownloadLinksFromTwitsave(html, twitterUrl) {
       tweetUrl: $('a.text-xs').first().attr('href') || twitterUrl
     };
 
-    result.thumbnail = $("video").attr("poster") || null;
-    result.videoPreview = $("video").attr("src") || null;
+    result.thumbnail = $('video').attr('poster') || null;
+    result.videoPreview = $('video').attr('src') || null;
 
     $('a[href*="/download?file="]').each((i, el) => {
-      const link = $(el).attr("href");
-      const full = `https://twitsave.com${link}`;
-
+      const href = $(el).attr('href');
       const text = $(el).find(".truncate").text().trim();
+
       const match = text.match(/(\d+x\d+)/);
-      const res = match ? match[1] : "unknown";
+      const resolution = match ? match[1] : "unknown";
 
       let quality = "low";
-      if (res.includes("720") || res.includes("1080")) quality = "hd";
-      if (res.includes("360")) quality = "sd";
+      if (resolution.includes("720") || resolution.includes("1080")) quality = "hd";
+      if (resolution.includes("360")) quality = "sd";
+
+      const finalUrl = "https://twitsave.com" + href;
 
       result.downloadLinks.push({
-        url: full,
+        url: finalUrl,
         quality,
-        resolution: res,
-        type: "mp4"
+        resolution,
+        type: "mp4",
+        source: "twitsave"
       });
     });
 
@@ -139,64 +187,65 @@ function extractDownloadLinksFromTwitsave(html, twitterUrl) {
   }
 }
 
-async function storeVideoData(tweetId, data) {
-  const existing = memoryDB.videos.find(v => v.tweet_id === tweetId);
 
-  if (existing) {
-    existing.total_downloads += 1;
-    existing.last_fetched = new Date().toISOString();
+// ------------------------------------------------------------
+// STORE VIDEO DATA (original analytics functionality)
+// ------------------------------------------------------------
+async function storeVideoData(tweetId, result) {
+  const found = memoryDB.videos.find(v => v.tweet_id === tweetId);
+
+  if (found) {
+    found.total_downloads += 1;
+    found.last_fetched = new Date().toISOString();
   } else {
     memoryDB.videos.push({
       tweet_id: tweetId,
-      author: data.tweetInfo.author,
-      tweet_text: data.tweetInfo.text,
-      tweet_date: data.tweetInfo.date,
-      thumbnail_url: data.thumbnail,
+      author: result.tweetInfo.author,
+      tweet_text: result.tweetInfo.text,
+      tweet_date: result.tweetInfo.date,
+      thumbnail_url: result.thumbnail,
       total_downloads: 1,
       first_fetched: new Date().toISOString(),
       last_fetched: new Date().toISOString()
     });
+
     memoryDB.stats.totalVideos = memoryDB.videos.length;
   }
 
   if (memoryDB.videos.length > 500) {
-    memoryDB.videos = memoryDB.videos.slice(-300);
+    memoryDB.videos = memoryDB.videos.slice(-400);
   }
 }
 
-// ---------------------------------------------------------------
-// ROUTES
-// ---------------------------------------------------------------
 
-// HOME
+// ------------------------------------------------------------
+// STATIC PAGES
+// ------------------------------------------------------------
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "../public/index.html"));
 });
 
-// Playground
 app.get("/playground", (req, res) => {
   res.sendFile(path.join(__dirname, "../public/playground.html"));
 });
 
-// Docs
 app.get("/docs", (req, res) => {
   res.sendFile(path.join(__dirname, "../public/docs.html"));
 });
 
-// ---------------------------
-// API: Twitter video download
-// ---------------------------
+
+// ------------------------------------------------------------
+// API: DOWNLOAD (FULL ORIGINAL VERSION)
+// ------------------------------------------------------------
 app.get("/api/download", async (req, res) => {
   try {
     const { url } = req.query;
 
-    if (!url) {
-      return res.status(400).json({ success: false, error: "URL required" });
-    }
+    if (!url)
+      return res.status(400).json({ success: false, error: "Twitter URL is required" });
 
-    if (!url.includes("twitter") && !url.includes("x.com")) {
+    if (!url.includes("twitter") && !url.includes("x.com"))
       return res.status(400).json({ success: false, error: "Invalid Twitter URL" });
-    }
 
     const tweetId = getTweetId(url);
     if (!tweetId)
@@ -204,9 +253,9 @@ app.get("/api/download", async (req, res) => {
 
     await logRequest(req, url, "/api/download");
 
-    const twURL = `https://twitsave.com/info?url=${encodeURIComponent(url)}`;
+    const twUrl = `https://twitsave.com/info?url=${encodeURIComponent(url)}`;
 
-    const response = await axios.get(twURL, {
+    const response = await axios.get(twUrl, {
       headers: getTwitsaveHeaders(),
       timeout: 15000
     });
@@ -221,53 +270,95 @@ app.get("/api/download", async (req, res) => {
     res.json({
       success: true,
       tweetId,
-      ...parsed
+      ...parsed,
+      author: "@m2hgamerz",
+      telegram: "https://t.me/m2hgamerz",
+      apiVersion: "2.0"
     });
 
   } catch (err) {
     res.status(500).json({
       success: false,
-      error: err.message || "Server error"
+      error: err.message,
+      author: "@m2hgamerz"
     });
   }
 });
 
-// ---------------------------
-// API: Stats
-// ---------------------------
-app.get("/api/stats", async (req, res) => {
-  await logRequest(req, "STATS_REQUEST", "/api/stats");
 
-  res.json({
-    success: true,
-    totalRequests: memoryDB.stats.totalRequests,
-    totalVideos: memoryDB.stats.totalVideos,
-    popularVideos: memoryDB.videos.slice(0, 10),
-    deviceStats: memoryDB.requests.reduce((acc, r) => {
-      acc[r.device] = (acc[r.device] || 0) + 1;
-      return acc;
-    }, {})
-  });
+// ------------------------------------------------------------
+// API: STATS (FULL ORIGINAL VERSION RESTORED)
+// ------------------------------------------------------------
+app.get("/api/stats", async (req, res) => {
+  try {
+    await logRequest(req, "STATS_REQUEST", "/api/stats");
+
+    const deviceCounts = {};
+    memoryDB.requests.forEach(r => {
+      deviceCounts[r.device_type] = (deviceCounts[r.device_type] || 0) + 1;
+    });
+
+    const deviceStats = Object.entries(deviceCounts).map(([device_type, count]) => ({
+      device_type,
+      count
+    }));
+
+    const popular = [...memoryDB.videos]
+      .sort((a, b) => b.total_downloads - a.total_downloads)
+      .slice(0, 10)
+      .map(v => ({
+        tweet_id: v.tweet_id,
+        author: v.author,
+        total_downloads: v.total_downloads
+      }));
+
+    res.json({
+      success: true,
+      statistics: {
+        totalRequests: memoryDB.stats.totalRequests,
+        totalVideos: memoryDB.stats.totalVideos,
+        popularVideos: popular,
+        deviceStats: deviceStats,
+        memoryUsage: {
+          requests: memoryDB.requests.length,
+          videos: memoryDB.videos.length
+        }
+      },
+      database: "memory",
+      note: "Statistics reset on server restart",
+      author: "@m2hgamerz",
+      telegram: "https://t.me/m2hgamerz"
+    });
+
+  } catch (err) {
+    res.status(500).json({ success: false, error: "Stats failed" });
+  }
 });
 
-// ---------------------------
-// HEALTH CHECK
-// ---------------------------
+
+// ------------------------------------------------------------
+// HEALTH CHECK (original)
+// ------------------------------------------------------------
 app.get("/health", (req, res) => {
   res.json({
     status: "OK",
-    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
     totalRequests: memoryDB.stats.totalRequests,
-    timestamp: new Date().toISOString()
+    totalVideos: memoryDB.stats.totalVideos,
+    author: "@m2hgamerz"
   });
 });
 
-// ---------------------------
-// Fallback
-// ---------------------------
+
+// ------------------------------------------------------------
+// 404 HANDLER
+// ------------------------------------------------------------
 app.use("*", (req, res) => {
-  res.status(404).json({ success: false, error: "Not found" });
+  res.status(404).json({ success: false, error: "Route not found" });
 });
 
-// REQUIRED for Vercel
+
+// ------------------------------------------------------------
+// REQUIRED FOR VERCEL SERVERLESS
+// ------------------------------------------------------------
 module.exports = app;
