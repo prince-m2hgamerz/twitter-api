@@ -1,9 +1,7 @@
 // ============================================================
-//  TWITTER VIDEO API by @m2hgamerz
-//  FINAL PATCHED VERSION — DEV + PROD WORKS
+//  TWITTER VIDEO API by @m2hgamerz — FINAL RPC FIXED VERSION
 // ============================================================
 
-// Load .env only in development
 if (process.env.NODE_ENV !== "production") {
   require("dotenv").config();
 }
@@ -23,17 +21,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, "../public")));
 
-// ============================================================
-//  SUPABASE CLIENT
-// ============================================================
-if (!process.env.SUPABASE_URL || !process.env.SUPABASE_KEY) {
-  console.error("❌ Missing Supabase ENV variables");
-}
-
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 // ============================================================
-//  ADMIN MIDDLEWARE
+// ADMIN AUTH
 // ============================================================
 function adminAuth(req, res, next) {
   const token = req.headers.authorization?.split(" ")[1];
@@ -44,7 +35,7 @@ function adminAuth(req, res, next) {
 }
 
 // ============================================================
-//  PARSE CLIENT INFO
+// DEVICE INFO PARSER
 // ============================================================
 function getClientInfo(req) {
   const ua = req.headers["user-agent"] || "Unknown";
@@ -82,7 +73,7 @@ function getClientInfo(req) {
 }
 
 // ============================================================
-//  LOG REQUEST INTO SUPABASE
+// LOG REQUEST TO SUPABASE (RPC FIXED)
 // ============================================================
 async function logRequest(req, url, endpoint) {
   const info = getClientInfo(req);
@@ -93,13 +84,16 @@ async function logRequest(req, url, endpoint) {
     endpoint
   });
 
-  // Safe increment
-  await supabase.rpc("increment_stat", { field_name: "total_requests" })
-    .catch(() => console.log("⚠ Could not increment total_requests"));
+  // safe RPC call
+  const { error } = await supabase.rpc("increment_stat", {
+    field_name: "total_requests"
+  });
+
+  if (error) console.log("RPC REQUEST ERROR:", error.message);
 }
 
 // ============================================================
-//  TWITSAVE HEADERS
+// TWITSAVE HEADERS
 // ============================================================
 function getTwitsaveHeaders() {
   return {
@@ -110,7 +104,7 @@ function getTwitsaveHeaders() {
 }
 
 // ============================================================
-//  EXTRACT TWEET ID
+// TWEET ID
 // ============================================================
 function getTweetId(url) {
   const match = url.match(/status\/(\d+)/);
@@ -118,7 +112,7 @@ function getTweetId(url) {
 }
 
 // ============================================================
-//  PARSE TWITSAVE HTML
+// PARSE TWITSAVE
 // ============================================================
 function extractDownloadLinksFromTwitsave(html, twitterUrl) {
   const $ = cheerio.load(html);
@@ -165,9 +159,9 @@ function extractDownloadLinksFromTwitsave(html, twitterUrl) {
 }
 
 // ============================================================
-//  STORE VIDEO IN SUPABASE
+// STORE VIDEO (RPC FIXED)
 // ============================================================
-async function storeVideo(tweetId, data) {
+async function storeVideo(tweetId, parsed) {
   const existing = await supabase
     .from("videos")
     .select("*")
@@ -175,7 +169,8 @@ async function storeVideo(tweetId, data) {
     .maybeSingle();
 
   if (existing.data) {
-    await supabase.from("videos")
+    await supabase
+      .from("videos")
       .update({
         total_downloads: existing.data.total_downloads + 1,
         last_fetched: new Date()
@@ -184,15 +179,19 @@ async function storeVideo(tweetId, data) {
   } else {
     await supabase.from("videos").insert({
       tweet_id: tweetId,
-      author: data.tweetInfo.author,
-      tweet_text: data.tweetInfo.text,
-      tweet_date: data.tweetInfo.date,
-      thumbnail_url: data.thumbnail,
+      author: parsed.tweetInfo.author,
+      tweet_text: parsed.tweetInfo.text,
+      tweet_date: parsed.tweetInfo.date,
+      thumbnail_url: parsed.thumbnail,
       total_downloads: 1
     });
 
-    await supabase.rpc("increment_stat", { field_name: "total_videos" })
-      .catch(() => console.log("⚠ Could not increment total_videos"));
+    // safe RPC
+    const { error } = await supabase.rpc("increment_stat", {
+      field_name: "total_videos"
+    });
+
+    if (error) console.log("RPC VIDEO ERROR:", error.message);
   }
 }
 
@@ -210,7 +209,7 @@ app.get("/admin", (_, res) => res.sendFile(path.join(__dirname, "../public/admin
 app.get("/api/download", async (req, res) => {
   try {
     const { url } = req.query;
-    if (!url) return res.status(400).json({ success: false, error: "URL is required" });
+    if (!url) return res.status(400).json({ success: false, error: "URL required" });
 
     const tweetId = getTweetId(url);
     if (!tweetId) return res.status(400).json({ success: false, error: "Invalid tweet URL" });
@@ -221,21 +220,19 @@ app.get("/api/download", async (req, res) => {
     const html = await axios.get(tsUrl, { headers: getTwitsaveHeaders() });
 
     const parsed = extractDownloadLinksFromTwitsave(html.data, url);
-
     if (!parsed.downloadLinks.length)
       return res.status(404).json({ success: false, error: "No video found" });
 
     await storeVideo(tweetId, parsed);
 
     res.json({ success: true, tweetId, ...parsed });
-
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
 // ============================================================
-// SAFE STATS ROUTE (PATCHED)
+// STATS (SAFE VERSION)
 // ============================================================
 app.get("/api/stats", async (req, res) => {
   const { data: statsRaw } = await supabase
@@ -250,15 +247,15 @@ app.get("/api/stats", async (req, res) => {
   const { data: requests } = await supabase.from("requests").select("*");
 
   const deviceStats = {};
-  (requests || []).forEach(r => {
+  (requests || []).forEach((r) => {
     deviceStats[r.device_type] = (deviceStats[r.device_type] || 0) + 1;
   });
 
   res.json({
     success: true,
     statistics: {
-      totalRequests: stats.total_requests,
-      totalVideos: stats.total_videos,
+      totalRequests: stats.total_requests || 0,
+      totalVideos: stats.total_videos || 0,
       popularVideos: (videos || [])
         .sort((a, b) => b.total_downloads - a.total_downloads)
         .slice(0, 10),
@@ -301,7 +298,7 @@ app.get("/api/videos/search", async (req, res) => {
 });
 
 // ============================================================
-// ADMIN DATA (PATCHED)
+// ADMIN DATA (SAFE)
 // ============================================================
 app.get("/api/admin/data", adminAuth, async (req, res) => {
   const { data: statsRaw } = await supabase
@@ -327,7 +324,7 @@ app.get("/api/admin/data", adminAuth, async (req, res) => {
 });
 
 // ============================================================
-// HEALTH
+// HEALTH CHECK
 // ============================================================
 app.get("/health", (req, res) => {
   res.json({
@@ -340,11 +337,9 @@ app.get("/health", (req, res) => {
 // LOCAL DEV SERVER
 // ============================================================
 if (process.env.NODE_ENV !== "production") {
-  const PORT = 3000;
-  app.listen(PORT, () =>
-    console.log(`🔥 Local server running at http://localhost:${PORT}`)
+  app.listen(3000, () =>
+    console.log("🔥 Local server running at http://localhost:3000")
   );
 }
 
-// ============================================================
 module.exports = app;
