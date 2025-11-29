@@ -219,20 +219,52 @@ async function loadAdminData() {
         });
     }
 
-    // Videos table
-    const vidBox = $("table-videos");
-    if (vidBox) {
-        vidBox.innerHTML = "";
-        d.videos.slice(-100).reverse().forEach(v => {
-            vidBox.innerHTML += `
-                <tr>
-                  <td>${v.tweet_id}</td>
-                  <td>${v.author}</td>
-                  <td>${v.total_downloads}</td>
-                  <td>${v.tweet_date}</td>
-                </tr>`;
-        });
-    }
+// VIDEO GALLERY (with thumbnail fetch)
+const vidBox = $("video-gallery");
+if (vidBox) {
+    vidBox.innerHTML = "";
+
+    // Loop all videos
+    d.videos.slice(-100).reverse().forEach(async (v) => {
+
+        const tweetUrl = v.twitter_url || `https://twitter.com/i/status/${v.tweet_id}`;
+
+        // *** FETCH THUMBNAIL FROM YOUR TWITTER API ***
+        let thumb = "https://via.placeholder.com/300x200?text=Loading...";
+        try {
+            const apiRes = await fetch(`/api/download?url=${encodeURIComponent(tweetUrl)}`);
+            const apiData = await apiRes.json();
+
+            if (apiData.thumbnail) {
+                thumb = apiData.thumbnail;
+            } else {
+                thumb = "https://via.placeholder.com/300x200?text=No+Thumbnail";
+            }
+        } catch (e) {
+            thumb = "https://via.placeholder.com/300x200?text=Error";
+        }
+
+        // ADD VIDEO CARD
+        vidBox.innerHTML += `
+            <div class="video-card">
+                <div class="thumb-wrapper"
+                     onclick="window.open('${tweetUrl}', '_blank')">
+                     
+                    <img src="${thumb}" 
+                         class="thumb"
+                         onerror="this.src='https://via.placeholder.com/300x200?text=No+Image';">
+                </div>
+
+                <div class="video-info">
+                    <p class="author">${v.author}</p>
+                    <p>Downloads: ${v.total_downloads}</p>
+                    <p class="date">${v.tweet_date}</p>
+                    <p class="id">ID: ${v.tweet_id}</p>
+                </div>
+            </div>
+        `;
+    });
+}
 }
 
 /* ============================================================

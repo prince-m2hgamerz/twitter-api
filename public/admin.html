@@ -1,103 +1,122 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>M2H Admin Panel — macOS</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>M2H Admin Panel</title>
 
-<!-- TailwindCSS -->
+<!-- Tailwind -->
 <script src="https://cdn.tailwindcss.com"></script>
 
-<!-- Lucide Icons -->
+<!-- Lucide -->
 <script src="https://unpkg.com/lucide@latest"></script>
 
 <!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-    body {
-        background: #f2f2f7;
-        color: #1c1c1e;
-        font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-    }
+body {
+    background: #f2f2f7;
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+}
 
-    /* Sidebar */
-    .sidebar {
-        width: 260px;
-        background: white;
-        border-right: 1px solid #d1d1d6;
-        padding: 24px 18px;
-    }
+/*** SIDEBAR BUTTON ***/
+.sidebar-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+    color: #3a3a3c;
+    transition: .15s;
+}
+.sidebar-btn:hover {
+    background: #e5e5ea;
+}
+.sidebar-btn.active {
+    background: #e5e5ea;
+    color: #0a84ff;
+    border-left: 4px solid #0a84ff;
+    padding-left: 8px;
+}
 
-    .sidebar-title {
-        font-size: 20px;
-        font-weight: 600;
-        margin-bottom: 18px;
-    }
+/*** CARD ***/
+.card {
+    background: white;
+    border: 1px solid #d1d1d6;
+    border-radius: 12px;
+    padding: 18px;
+}
 
-    .sidebar-btn {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        width: 100%;
-        padding: 10px 12px;
-        border-radius: 10px;
-        font-size: 15px;
-        color: #3a3a3c;
-        transition: 0.15s;
-    }
+/*** VIDEO GALLERY ***/
+.video-card {
+    background: white;
+    border: 1px solid #d1d1d6;
+    border-radius: 12px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: .2s;
+}
+.video-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.1);
+}
 
-    .sidebar-btn:hover {
-        background: #e5e5ea;
-    }
+.thumb-wrapper {
+    width: 100%;
+    height: 170px;
+    overflow: hidden;
+}
+.thumb {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: .25s;
+}
+.video-card:hover .thumb { transform: scale(1.06); }
 
-    .sidebar-btn.active {
-        background: #e5e5ea;
-        color: #0a84ff;
-        border-left: 4px solid #0a84ff;
-        padding-left: 8px;
-    }
-
-    .card {
-        background: white;
-        border: 1px solid #d1d1d6;
-        border-radius: 12px;
-        padding: 18px 20px;
-        box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-    }
-
-    .admin-section {
-        display: none;
-    }
-
-    .mobile-header {
-        background: white;
-        border-bottom: 1px solid #d1d1d6;
-    }
+.video-info {
+    padding: 12px;
+}
+.video-info .author {
+    font-weight: 600;
+    color: #1c1c1e;
+}
+.video-info .date,
+.video-info .id {
+    font-size: 12px;
+    color: #666;
+}
 </style>
-
 </head>
+
 <body>
 
 <!-- LOGIN SCREEN -->
 <div id="login-screen" class="fixed inset-0 bg-white flex items-center justify-center z-50">
-    <div class="card w-11/12 sm:w-96">
-        <h1 class="text-2xl font-semibold text-center mb-4">Admin Login</h1>
-        <input id="admin-key-input" class="w-full p-3 border border-gray-300 rounded-xl mb-3" type="password" placeholder="Enter Admin Key">
-        <p id="login-error" class="hidden text-red-600 text-sm mb-3"></p>
+    <div class="card w-80">
+        <h1 class="text-xl font-semibold mb-3 text-center">Admin Login</h1>
 
-        <button onclick="loginAdmin()" class="w-full py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition">
+        <input id="admin-key-input" type="password"
+            class="w-full p-3 border border-gray-300 rounded-lg mb-2"
+            placeholder="Enter Admin Key">
+
+        <p id="login-error" class="hidden text-red-600 text-sm mb-2"></p>
+
+        <button onclick="loginAdmin()"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg">
             Login
         </button>
     </div>
 </div>
 
-<!-- ADMIN PANEL -->
-<div id="admin-panel" class="hidden min-h-screen flex bg-[#f2f2f7]">
+<!-- PANEL -->
+<div id="admin-panel" class="hidden flex min-h-screen">
 
-    <!-- SIDEBAR -->
-    <aside class="sidebar fixed left-0 top-0 bottom-0 hidden lg:flex flex-col space-y-1">
-        <h1 class="sidebar-title">M2H Admin</h1>
+    <!-- DESKTOP SIDEBAR -->
+    <aside class="hidden lg:flex flex-col w-64 bg-white border-r border-gray-200 p-5 space-y-2 fixed top-0 bottom-0">
+
+        <h1 class="text-xl font-semibold mb-4">M2H Admin</h1>
 
         <button id="nav-dashboard" class="sidebar-btn active" onclick="switchTab('dashboard')">
             <i data-lucide="layout-dashboard"></i> Dashboard
@@ -123,20 +142,18 @@
             <i data-lucide="settings"></i> Tools
         </button>
 
-        <button onclick="logoutAdmin()" class="w-full mt-6 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 flex items-center justify-center gap-2">
+        <button onclick="logoutAdmin()"
+            class="w-full mt-auto bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg flex items-center justify-center gap-2">
             <i data-lucide="log-out"></i> Logout
         </button>
     </aside>
 
     <!-- MOBILE HEADER -->
-    <header class="mobile-header lg:hidden fixed inset-x-0 top-0 p-4 flex justify-between items-center z-50">
-        <button id="mobile-menu-toggle"
-    aria-label="Open menu"
-    title="Open menu"
-    class="w-10 h-10 flex items-center justify-center rounded-xl bg-[#e5e5ea] active:scale-95 transition">
-    <i data-lucide="menu" class="w-5 h-5 text-[#1c1c1e]"></i>
-</button>
-
+    <header class="lg:hidden fixed top-0 left-0 right-0 bg-white border-b border-gray-200 p-4 flex justify-between items-center z-50">
+        <button id="mobile-menu-toggle" title="Menu"
+            class="w-10 h-10 bg-gray-200 rounded-lg flex justify-center items-center">
+            <i data-lucide="menu"></i>
+        </button>
 
         <h1 class="text-lg font-semibold">M2H Admin</h1>
 
@@ -145,9 +162,10 @@
 
     <!-- MOBILE SIDEBAR -->
     <aside id="mobile-sidebar"
-        class="fixed inset-y-0 left-0 w-72 bg-white border-r border-gray-200 p-6 transform -translate-x-full transition duration-300 ease-in-out z-50 lg:hidden">
+        class="fixed inset-y-0 left-0 w-64 bg-white p-5 border-r border-gray-200 transform -translate-x-full transition duration-300 z-40 lg:hidden">
 
-        <nav class="space-y-1 mt-10">
+        <nav class="space-y-2 mt-10">
+
             <button id="mobile-nav-dashboard" class="sidebar-btn active" onclick="switchTab('dashboard')">
                 <i data-lucide="layout-dashboard"></i> Dashboard
             </button>
@@ -173,44 +191,33 @@
             </button>
         </nav>
 
-        <button onclick="logoutAdmin()" class="mt-10 py-3 bg-red-500 text-white rounded-xl hover:bg-red-600 flex items-center justify-center gap-2">
+        <button onclick="logoutAdmin()"
+            class="mt-10 w-full bg-red-500 hover:bg-red-600 text-white py-3 rounded-lg flex items-center justify-center gap-2">
             <i data-lucide="log-out"></i> Logout
         </button>
     </aside>
 
     <!-- MAIN CONTENT -->
-    <main class="flex-1 ml-0 lg:ml-[260px] p-6 space-y-8 pt-20 lg:pt-8 overflow-x-hidden">
+    <main class="flex-1 ml-0 lg:ml-64 mt-20 lg:mt-0 p-6 space-y-8">
 
         <!-- DASHBOARD -->
         <section id="section-dashboard" class="admin-section">
-            <h2 class="text-2xl font-semibold mb-4">Dashboard Overview</h2>
+            <h2 class="text-2xl font-semibold mb-4">Dashboard</h2>
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <div class="card">
-                    <p class="text-gray-600">Total Requests</p>
-                    <h1 id="stat-total-requests" class="text-2xl font-semibold mt-2">0</h1>
-                </div>
-
-                <div class="card">
-                    <p class="text-gray-600">Total Videos</p>
-                    <h1 id="stat-total-videos" class="text-2xl font-semibold mt-2">0</h1>
-                </div>
-
-                <div class="card">
-                    <p class="text-gray-600">Active Users</p>
-                    <h1 id="stat-active-users" class="text-2xl font-semibold mt-2">0</h1>
-                </div>
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div class="card"><p class="text-gray-500">Total Requests</p><h1 id="stat-total-requests" class="text-xl font-semibold mt-2">0</h1></div>
+                <div class="card"><p class="text-gray-500">Total Videos</p><h1 id="stat-total-videos" class="text-xl font-semibold mt-2">0</h1></div>
+                <div class="card"><p class="text-gray-500">Active Users</p><h1 id="stat-active-users" class="text-xl font-semibold mt-2">0</h1></div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+            <div class="grid lg:grid-cols-2 gap-4 mt-5">
                 <div class="card">
-                    <h3 class="font-medium mb-3">Requests / Hour</h3>
-                    <canvas id="chart-requests" height="220"></canvas>
+                    <h3 class="font-medium mb-2">Requests / Hour</h3>
+                    <canvas id="chart-requests" height="200"></canvas>
                 </div>
-
                 <div class="card">
-                    <h3 class="font-medium mb-3">Device Types</h3>
-                    <canvas id="chart-devices" height="220"></canvas>
+                    <h3 class="font-medium mb-2">Device Usage</h3>
+                    <canvas id="chart-devices" height="200"></canvas>
                 </div>
             </div>
         </section>
@@ -219,20 +226,18 @@
         <section id="section-requests" class="admin-section hidden">
             <h2 class="text-2xl font-semibold mb-4">Requests</h2>
 
-            <button onclick="clearRequests()" class="mb-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
-                Clear All Requests
-            </button>
+            <button onclick="clearRequests()" class="mb-4 bg-red-500 text-white px-4 py-2 rounded-lg">Clear Requests</button>
 
             <div class="card overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="bg-gray-50 border-b">
-                        <tr class="text-left">
-                            <th class="p-3">IP</th>
-                            <th class="p-3">Device</th>
-                            <th class="p-3">Browser</th>
-                            <th class="p-3">Platform</th>
-                            <th class="p-3">URL</th>
-                            <th class="p-3">Time</th>
+                <table class="text-sm w-full">
+                    <thead class="border-b bg-gray-50">
+                        <tr>
+                            <th class="p-3 text-left">IP</th>
+                            <th class="p-3 text-left">Device</th>
+                            <th class="p-3 text-left">Browser</th>
+                            <th class="p-3 text-left">Platform</th>
+                            <th class="p-3 text-left">URL</th>
+                            <th class="p-3 text-left">Time</th>
                         </tr>
                     </thead>
                     <tbody id="table-requests"></tbody>
@@ -244,24 +249,10 @@
         <section id="section-videos" class="admin-section hidden">
             <h2 class="text-2xl font-semibold mb-4">Videos</h2>
 
-            <button onclick="clearVideos()" class="mb-4 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">
-                Clear All Videos
-            </button>
+            <button onclick="clearVideos()" class="mb-4 bg-red-500 text-white px-4 py-2 rounded-lg">Clear All Videos</button>
 
-            <div class="card overflow-x-auto">
-                <table class="w-full text-sm">
-                    <thead class="bg-gray-50 border-b">
-                        <tr class="text-left">
-                            <th class="p-3">Thumbnail</th>
-                            <th class="p-3">ID</th>
-                            <th class="p-3">Author</th>
-                            <th class="p-3">Downloads</th>
-                            <th class="p-3">Date</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-videos"></tbody>
-                </table>
-            </div>
+            <!-- NEW VIDEO GALLERY -->
+            <div id="video-gallery" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4"></div>
         </section>
 
         <!-- MONITOR -->
@@ -278,6 +269,7 @@
             </div>
 
             <h3 class="text-xl font-semibold mt-6 mb-3">External Pings</h3>
+
             <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div class="card"><p>Google</p><h1 id="mon-google" class="text-xl font-semibold mt-2">--</h1></div>
                 <div class="card"><p>Cloudflare</p><h1 id="mon-cloudflare" class="text-xl font-semibold mt-2">--</h1></div>
@@ -289,36 +281,38 @@
         <section id="section-logs" class="admin-section hidden">
             <h2 class="text-2xl font-semibold mb-4">Logs</h2>
 
-            <div id="logs-box" class="card h-80 overflow-y-auto text-sm">
+            <div id="logs-box" class="card h-80 overflow-y-auto">
                 Loading logs...
             </div>
         </section>
 
         <!-- TOOLS -->
         <section id="section-tools" class="admin-section hidden">
-            <h2 class="text-2xl font-semibold mb-4">Admin Tools</h2>
+            <h2 class="text-2xl font-semibold mb-4">Tools</h2>
 
             <div class="space-y-6">
-                <div class="card space-y-3">
+
+                <div class="card space-y-2">
                     <h3 class="text-lg font-semibold">Ban IP</h3>
                     <input id="ban-ip-input" class="w-full p-3 border border-gray-300 rounded-lg" placeholder="Enter IP">
-                    <button onclick="banIP()" class="px-4 py-2 bg-red-500 text-white rounded-lg">Ban IP</button>
+                    <button onclick="banIP()" class="bg-red-500 text-white px-4 py-2 rounded-lg">Ban</button>
                 </div>
 
-                <div class="card space-y-3">
+                <div class="card space-y-2">
                     <h3 class="text-lg font-semibold">Reset Stats</h3>
-                    <button onclick="resetStats()" class="px-4 py-2 bg-yellow-500 text-white rounded-lg">Reset Stats</button>
+                    <button onclick="resetStats()" class="bg-yellow-500 text-white px-4 py-2 rounded-lg">Reset</button>
                 </div>
 
-                <div class="card space-y-3">
-                    <h3 class="text-lg font-semibold">Clear All Requests</h3>
-                    <button onclick="clearRequests()" class="px-4 py-2 bg-red-500 text-white rounded-lg">Clear Requests</button>
+                <div class="card space-y-2">
+                    <h3 class="text-lg font-semibold">Clear Requests</h3>
+                    <button onclick="clearRequests()" class="bg-red-500 text-white px-4 py-2 rounded-lg">Clear Requests</button>
                 </div>
 
-                <div class="card space-y-3">
-                    <h3 class="text-lg font-semibold">Clear All Videos</h3>
-                    <button onclick="clearVideos()" class="px-4 py-2 bg-red-500 text-white rounded-lg">Clear Videos</button>
+                <div class="card space-y-2">
+                    <h3 class="text-lg font-semibold">Clear Videos</h3>
+                    <button onclick="clearVideos()" class="bg-red-500 text-white px-4 py-2 rounded-lg">Clear Videos</button>
                 </div>
+
             </div>
         </section>
 
@@ -350,13 +344,11 @@ document.querySelectorAll("#mobile-sidebar .sidebar-btn").forEach(btn => {
 });
 
 setInterval(() => {
-    const el = document.getElementById("mobile-current-time");
-    if (el) el.innerText = new Date().toLocaleTimeString();
+    const t = document.getElementById("mobile-current-time");
+    if (t) t.innerText = new Date().toLocaleTimeString();
 }, 1000);
 </script>
 
-<!-- CONNECT ADMIN.JS -->
 <script src="admin.js"></script>
-
 </body>
 </html>
