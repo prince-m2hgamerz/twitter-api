@@ -1,243 +1,94 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>M2H Analytics Dashboard</title>
-    
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>M2H Admin Panel</title>
+
+    <!-- TailwindCSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
     <style>
-        :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --secondary: #10b981;
-            --accent: #f59e0b;
-            --danger: #ef4444;
-            --dark: #0f172a;
-            --dark-light: #1e293b;
-            --dark-lighter: #334155;
-            --light: #f8fafc;
-            --gray: #64748b;
-            --border: rgba(255,255,255,0.1);
-            --shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
-            --glass: rgba(255, 255, 255, 0.05);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-
+        /* Page Fade Animation */
         body {
-            background: linear-gradient(135deg, var(--dark) 0%, #1e1b4b 100%);
-            color: var(--light);
-            min-height: 100vh;
-            overflow-x: hidden;
+            animation: fadeIn 0.4s ease-in-out;
         }
 
-        /* Layout */
-        .admin-container {
-            display: flex;
-            min-height: 100vh;
+        @keyframes fadeIn {
+            from { opacity: 0 }
+            to { opacity: 1 }
         }
 
-        /* Sidebar */
-        .sidebar {
-            width: 280px;
-            background: rgba(15, 23, 42, 0.8);
-            -webkit-backdrop-filter: blur(20px);
-            backdrop-filter: blur(20px);
-            border-right: 1px solid var(--border);
-            padding: 2rem 1.5rem;
-            display: flex;
-            flex-direction: column;
-            transition: var(--transition);
-            position: fixed;
-            height: 100vh;
-            z-index: 100;
+        /* Smooth section transitions */
+        .admin-section {
+            animation: slideFade 0.35s ease;
         }
 
-        .sidebar-header {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 3rem;
-            padding-bottom: 1.5rem;
-            border-bottom: 1px solid var(--border);
+        @keyframes slideFade {
+            from { opacity: 0; transform: translateY(8px); }
+            to   { opacity: 1; transform: translateY(0); }
         }
 
-        .logo {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 1.2rem;
+        .glass {
+            -webkit-backdrop-filter: blur(18px);
+            backdrop-filter: blur(18px);
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.08);
         }
 
-        .brand {
-            font-size: 1.5rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, var(--light), #cbd5e1);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
         }
 
-        .nav-links {
-            display: flex;
-            flex-direction: column;
-            gap: 0.5rem;
-            flex: 1;
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
         }
 
-        .nav-item {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1rem 1.5rem;
-            border-radius: 12px;
-            color: var(--gray);
-            text-decoration: none;
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
         }
 
-        .nav-item:hover {
-            background: var(--glass);
-            color: var(--light);
-            transform: translateX(5px);
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
 
-        .nav-item.active {
-            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-            color: white;
-            box-shadow: var(--shadow);
-        }
-
-        .nav-item i {
-            font-size: 1.25rem;
-            width: 24px;
-            text-align: center;
-        }
-
-        .nav-badge {
-            background: var(--danger);
-            color: white;
-            font-size: 0.75rem;
-            padding: 0.25rem 0.5rem;
-            border-radius: 20px;
-            margin-left: auto;
-        }
-
-        /* Main Content */
-        .main-content {
-            flex: 1;
-            margin-left: 280px;
-            padding: 2rem;
-            transition: var(--transition);
-        }
-
-        /* Header */
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1.5rem;
-            border-bottom: 1px solid var(--border);
-        }
-
-        .header-title h1 {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .header-title p {
-            color: var(--gray);
-        }
-
-        .header-actions {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .search-box {
-            position: relative;
-        }
-
-        .search-box input {
-            background: var(--dark-light);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 0.75rem 1rem 0.75rem 2.5rem;
-            color: var(--light);
-            width: 300px;
-            transition: var(--transition);
-        }
-
-        .search-box input:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
-        }
-
-        .search-box i {
-            position: absolute;
-            left: 1rem;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--gray);
-        }
-
-        .user-menu {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 0.5rem;
-            border-radius: 12px;
-            transition: var(--transition);
-            cursor: pointer;
-        }
-
-        .user-menu:hover {
-            background: var(--glass);
-        }
-
-        .user-avatar {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 600;
-        }
-
-        /* Stats Grid */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
+        /* Card hover effects */
         .stat-card {
-            background: linear-gradient(135deg, var(--dark-light), var(--dark));
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 1.5rem;
-            transition: var(--transition);
+            transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
         }
 
         .stat-card::before {
@@ -247,663 +98,688 @@
             left: 0;
             width: 100%;
             height: 4px;
-            background: linear-gradient(90deg, var(--primary), var(--secondary));
+            background: linear-gradient(90deg, #3b82f6, #8b5cf6);
         }
 
-        .stat-card:hover {
-            transform: translateY(-5px);
-            box-shadow: var(--shadow);
-        }
-
-        .stat-header {
-            display: flex;
-            justify-content: between;
-            align-items: flex-start;
-            margin-bottom: 1rem;
-        }
-
-        .stat-icon {
-            width: 48px;
-            height: 48px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            background: var(--glass);
-        }
-
-        .stat-trend {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.875rem;
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--secondary);
-        }
-
-        .stat-trend.down {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--danger);
-        }
-
-        .stat-value {
-            font-size: 2rem;
-            font-weight: 700;
-            margin-bottom: 0.5rem;
-        }
-
-        .stat-label {
-            color: var(--gray);
-            font-size: 0.875rem;
-        }
-
-        /* Charts */
-        .charts-grid {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .chart-card {
-            background: var(--dark-light);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            padding: 1.5rem;
-        }
-
-        .chart-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1.5rem;
-        }
-
-        .chart-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-        }
-
-        .chart-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .chart-btn {
-            padding: 0.5rem 1rem;
-            border-radius: 8px;
-            background: var(--glass);
-            border: none;
-            color: var(--light);
-            font-size: 0.875rem;
-            cursor: pointer;
-            transition: var(--transition);
-        }
-
-        .chart-btn.active {
-            background: var(--primary);
-        }
-
-        .chart-container {
-            height: 300px;
+        /* Nav item active state */
+        .nav-item {
+            transition: all 0.2s ease;
             position: relative;
         }
 
-        /* Tables */
-        .table-card {
-            background: var(--dark-light);
-            border: 1px solid var(--border);
-            border-radius: 16px;
-            overflow: hidden;
+        .nav-item.active {
+            background: rgba(59, 130, 246, 0.15);
+            border-left: 3px solid #3b82f6;
         }
 
-        .table-header {
-            padding: 1.5rem;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .nav-item:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.05);
         }
 
-        .table-title {
-            font-size: 1.25rem;
-            font-weight: 600;
+        /* Table improvements */
+        .table-row {
+            transition: background-color 0.2s ease;
         }
 
-        .table-actions {
-            display: flex;
-            gap: 0.75rem;
+        .table-row:hover {
+            background: rgba(255, 255, 255, 0.03);
         }
 
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border-radius: 12px;
-            border: none;
-            font-weight: 600;
-            cursor: pointer;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+        /* Mobile sidebar */
+        .mobile-sidebar {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
         }
 
-        .btn-primary {
-            background: var(--primary);
-            color: white;
+        .mobile-sidebar.open {
+            transform: translateX(0);
         }
 
-        .btn-primary:hover {
-            background: var(--primary-dark);
-            transform: translateY(-2px);
-        }
-
-        .btn-secondary {
-            background: var(--glass);
-            color: var(--light);
-            border: 1px solid var(--border);
-        }
-
-        .table-container {
-            overflow-x: auto;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-
-        th {
-            background: var(--dark);
-            padding: 1rem 1.5rem;
-            text-align: left;
-            font-weight: 600;
-            color: var(--gray);
-            font-size: 0.875rem;
-        }
-
-        td {
-            padding: 1rem 1.5rem;
-            border-bottom: 1px solid var(--border);
-        }
-
-        tr:hover {
-            background: var(--glass);
-        }
-
-        .status {
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.875rem;
-            font-weight: 600;
-        }
-
-        .status-success {
-            background: rgba(16, 185, 129, 0.2);
-            color: var(--secondary);
-        }
-
-        .status-warning {
-            background: rgba(245, 158, 11, 0.2);
-            color: var(--accent);
-        }
-
-        .status-danger {
-            background: rgba(239, 68, 68, 0.2);
-            color: var(--danger);
-        }
-
-        /* Mobile Menu */
-        .mobile-menu-btn {
-            display: none;
-            background: none;
-            border: none;
-            color: var(--light);
-            font-size: 1.5rem;
-            cursor: pointer;
-        }
-
-        .mobile-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 90;
-        }
-
-        /* Responsive */
-        @media (max-width: 1024px) {
-            .sidebar {
-                transform: translateX(-100%);
-            }
-            
-            .sidebar.active {
-                transform: translateX(0);
-            }
-            
-            .main-content {
-                margin-left: 0;
-            }
-            
-            .mobile-menu-btn {
-                display: block;
-            }
-            
-            .charts-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-
+        /* Responsive table */
         @media (max-width: 768px) {
-            .main-content {
-                padding: 1rem;
-            }
-            
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .search-box input {
-                width: 200px;
-            }
-            
-            .header {
-                flex-direction: column;
-                align-items: flex-start;
-                gap: 1rem;
-            }
-            
-            .header-actions {
-                width: 100%;
-                justify-content: space-between;
+            .responsive-table {
+                display: block;
+                overflow-x: auto;
+                white-space: nowrap;
             }
         }
 
-        @media (max-width: 480px) {
-            .search-box {
-                display: none;
-            }
+        /* Loading animation */
+        .loading-dots:after {
+            content: '.';
+            animation: dots 1.5s steps(5, end) infinite;
         }
 
-        /* Animations */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
-        }
-
-        /* Icons */
-        .icon {
-            display: inline-block;
-            width: 1em;
-            height: 1em;
-            stroke-width: 0;
-            stroke: currentColor;
-            fill: currentColor;
+        @keyframes dots {
+            0%, 20% { color: rgba(0,0,0,0); text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0); }
+            40% { color: white; text-shadow: .25em 0 0 rgba(0,0,0,0), .5em 0 0 rgba(0,0,0,0); }
+            60% { text-shadow: .25em 0 0 white, .5em 0 0 rgba(0,0,0,0); }
+            80%, 100% { text-shadow: .25em 0 0 white, .5em 0 0 white; }
         }
     </style>
-    
-    <!-- Material Icons -->
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
-<body>
-    <div class="admin-container">
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="logo">M</div>
-                <div class="brand">M2H Analytics</div>
+
+<body class="bg-gray-900 text-white h-screen overflow-hidden">
+
+<!-- ========================= LOGIN SCREEN ========================= -->
+<div id="login-screen" class="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-gray-900 to-gray-800 z-50">
+    <div class="glass p-6 sm:p-10 w-11/12 sm:w-96 rounded-2xl shadow-2xl text-center animate__fadeIn">
+        <div class="flex justify-center mb-6">
+            <div class="w-16 h-16 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                <i data-lucide="shield" class="text-white"></i>
             </div>
-            
-            <nav class="nav-links">
-                <a href="#" class="nav-item active">
-                    <i class="material-icons">dashboard</i>
-                    <span>Dashboard</span>
-                </a>
-                <a href="#" class="nav-item">
-                    <i class="material-icons">video_library</i>
-                    <span>Videos</span>
-                    <span class="nav-badge">12</span>
-                </a>
-                <a href="#" class="nav-item">
-                    <i class="material-icons">analytics</i>
-                    <span>Analytics</span>
-                </a>
-                <a href="#" class="nav-item">
-                    <i class="material-icons">people</i>
-                    <span>Users</span>
-                </a>
-                <a href="#" class="nav-item">
-                    <i class="material-icons">settings</i>
-                    <span>Settings</span>
-                </a>
-                <a href="#" class="nav-item">
-                    <i class="material-icons">help</i>
-                    <span>Help & Support</span>
-                </a>
-                
-                <div style="flex: 1;"></div>
-                
-                <a href="#" class="nav-item">
-                    <i class="material-icons">logout</i>
-                    <span>Logout</span>
-                </a>
-            </nav>
-        </aside>
-        
-        <!-- Mobile Overlay -->
-        <div class="mobile-overlay" id="mobileOverlay"></div>
-        
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Header -->
-            <header class="header">
-                <div class="header-title">
-                    <h1>Dashboard Overview</h1>
-                    <p>Welcome back, Administrator! Here's what's happening today.</p>
+        </div>
+        <h1 class="text-2xl font-bold mb-2">Admin Login</h1>
+        <p class="text-gray-400 mb-6">Enter your credentials to continue</p>
+
+        <div class="mb-4">
+            <input id="admin-key-input"
+                type="password"
+                placeholder="Enter Admin Key"
+                class="w-full p-4 rounded-xl bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition" />
+        </div>
+
+        <p id="login-error" class="text-red-400 text-sm hidden mb-4"></p>
+
+        <button onclick="loginAdmin()"
+            class="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 transition-all rounded-xl font-semibold shadow-lg">
+            Login
+        </button>
+    </div>
+</div>
+
+<!-- ========================= MAIN ADMIN PANEL ========================= -->
+<div id="admin-panel" class="hidden h-full flex">
+
+    <!-- ---------- SIDEBAR (Desktop) ---------- -->
+    <aside class="hidden lg:flex w-64 glass p-6 flex-col gap-2 border-r border-gray-800">
+        <div class="flex items-center gap-3 mb-8">
+            <div class="w-10 h-10 rounded-lg bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                <i data-lucide="shield" class="text-white"></i>
+            </div>
+            <h1 class="text-xl font-bold">M2H Admin</h1>
+        </div>
+
+        <nav class="flex flex-col gap-1">
+            <button id="nav-dashboard" class="nav-item active flex items-center gap-3 py-3 px-4 rounded-lg" onclick="switchTab('dashboard')">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i> 
+                <span>Dashboard</span>
+            </button>
+
+            <button id="nav-requests" class="nav-item flex items-center gap-3 py-3 px-4 rounded-lg" onclick="switchTab('requests')">
+                <i data-lucide="list" class="w-5 h-5"></i> 
+                <span>Requests</span>
+            </button>
+
+            <button id="nav-videos" class="nav-item flex items-center gap-3 py-3 px-4 rounded-lg" onclick="switchTab('videos')">
+                <i data-lucide="video" class="w-5 h-5"></i> 
+                <span>Videos</span>
+            </button>
+
+            <button id="nav-monitor" class="nav-item flex items-center gap-3 py-3 px-4 rounded-lg" onclick="switchTab('monitor')">
+                <i data-lucide="activity" class="w-5 h-5"></i> 
+                <span>Monitoring</span>
+            </button>
+
+            <button id="nav-logs" class="nav-item flex items-center gap-3 py-3 px-4 rounded-lg" onclick="switchTab('logs')">
+                <i data-lucide="file-text" class="w-5 h-5"></i> 
+                <span>Logs</span>
+            </button>
+        </nav>
+
+        <div class="mt-auto pt-4 border-t border-gray-800">
+            <div class="flex items-center gap-3 mb-4 px-4 py-2 rounded-lg bg-gray-800/50">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                    <i data-lucide="user" class="w-4 h-4 text-white"></i>
                 </div>
-                
-                <div class="header-actions">
-                    <button class="mobile-menu-btn" id="mobileMenuBtn">
-                        <i class="material-icons">menu</i>
-                    </button>
-                    
-                    <div class="search-box">
-                        <i class="material-icons">search</i>
-                        <input type="text" placeholder="Search...">
-                    </div>
-                    
-                    <div class="user-menu">
-                        <div class="user-avatar">A</div>
+                <div>
+                    <p class="text-sm font-medium">Administrator</p>
+                    <p class="text-xs text-gray-400">Online</p>
+                </div>
+            </div>
+            <button onclick="logoutAdmin()"
+                class="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 rounded-lg font-medium transition-all">
+                <i data-lucide="log-out" class="w-4 h-4"></i>
+                Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- ---------- MOBILE HEADER ---------- -->
+    <div class="lg:hidden fixed top-0 left-0 right-0 z-40 glass p-4 border-b border-gray-800">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <button id="mobile-menu-toggle" class="p-2 rounded-lg bg-gray-800/50" title="Toggle menu">
+                    <i data-lucide="menu" class="w-5 h-5"></i>
+                </button>
+                <h1 class="text-lg font-bold">M2H Admin</h1>
+            </div>
+            <div class="flex items-center gap-2 text-sm text-gray-400">
+                <i data-lucide="clock" class="w-4 h-4"></i>
+                <span id="mobile-current-time">--:--:--</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ---------- MOBILE SIDEBAR ---------- -->
+    <aside id="mobile-sidebar" class="mobile-sidebar lg:hidden fixed inset-y-0 left-0 z-50 w-64 glass p-6 flex-col gap-2 border-r border-gray-800 pt-16">
+        <nav class="flex flex-col gap-1 mt-4">
+            <button id="mobile-nav-dashboard" class="nav-item active flex items-center gap-3 py-3 px-4 rounded-lg" onclick="switchTab('dashboard')">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i> 
+                <span>Dashboard</span>
+            </button>
+
+            <button id="mobile-nav-requests" class="nav-item flex items-center gap-3 py-3 px-4 rounded-lg" onclick="switchTab('requests')">
+                <i data-lucide="list" class="w-5 h-5"></i> 
+                <span>Requests</span>
+            </button>
+
+            <button id="mobile-nav-videos" class="nav-item flex items-center gap-3 py-3 px-4 rounded-lg" onclick="switchTab('videos')">
+                <i data-lucide="video" class="w-5 h-5"></i> 
+                <span>Videos</span>
+            </button>
+
+            <button id="mobile-nav-monitor" class="nav-item flex items-center gap-3 py-3 px-4 rounded-lg" onclick="switchTab('monitor')">
+                <i data-lucide="activity" class="w-5 h-5"></i> 
+                <span>Monitoring</span>
+            </button>
+
+            <button id="mobile-nav-logs" class="nav-item flex items-center gap-3 py-3 px-4 rounded-lg" onclick="switchTab('logs')">
+                <i data-lucide="file-text" class="w-5 h-5"></i> 
+                <span>Logs</span>
+            </button>
+        </nav>
+
+        <div class="mt-auto pt-4 border-t border-gray-800">
+            <div class="flex items-center gap-3 mb-4 px-4 py-2 rounded-lg bg-gray-800/50">
+                <div class="w-8 h-8 rounded-full bg-gradient-to-r from-blue-500 to-purple-600 flex items-center justify-center">
+                    <i data-lucide="user" class="w-4 h-4 text-white"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-medium">Administrator</p>
+                    <p class="text-xs text-gray-400">Online</p>
+                </div>
+            </div>
+            <button onclick="logoutAdmin()"
+                class="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-red-600 to-pink-600 hover:from-red-700 hover:to-pink-700 rounded-lg font-medium transition-all">
+                <i data-lucide="log-out" class="w-4 h-4"></i>
+                Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- ---------- MAIN CONTENT ---------- -->
+    <main class="flex-1 overflow-y-auto p-4 lg:p-8 space-y-6 lg:space-y-8 bg-gradient-to-br from-gray-900 to-gray-800 mt-16 lg:mt-0">
+        <!-- ==================== DASHBOARD TAB ==================== -->
+        <section id="section-dashboard" class="admin-section">
+
+            <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 lg:mb-8 gap-4">
+                <div>
+                    <h2 class="text-2xl lg:text-3xl font-bold">Dashboard Overview</h2>
+                    <p class="text-gray-400 mt-2 text-sm lg:text-base">Welcome back! Here's what's happening with your system.</p>
+                </div>
+                <div class="flex items-center gap-2 text-sm text-gray-400">
+                    <i data-lucide="clock" class="w-4 h-4"></i>
+                    <span id="current-time">--:--:--</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-6 lg:mb-8">
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
+                    <div class="flex justify-between items-start mb-4">
                         <div>
-                            <div>Administrator</div>
-                            <div style="font-size: 0.875rem; color: var(--gray);">Super Admin</div>
+                            <p class="text-gray-400 text-sm">Total Requests</p>
+                            <h1 id="stat-total-requests" class="text-3xl lg:text-4xl font-bold mt-2">0</h1>
                         </div>
-                        <i class="material-icons">expand_more</i>
+                        <div class="p-2 lg:p-3 rounded-xl bg-blue-500/20 text-blue-400">
+                            <i data-lucide="trending-up" class="w-5 lg:w-6 h-5 lg:h-6"></i>
+                        </div>
                     </div>
+                    <p class="text-green-400 text-sm flex items-center gap-1">
+                        <i data-lucide="arrow-up" class="w-4 h-4"></i>
+                        <span>12% from last week</span>
+                    </p>
                 </div>
-            </header>
-            
-            <!-- Stats Grid -->
-            <div class="stats-grid">
-                <div class="stat-card fade-in">
-                    <div class="stat-header">
-                        <div class="stat-icon">
-                            <i class="material-icons" style="color: var(--primary);">trending_up</i>
+
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-gray-400 text-sm">Total Videos</p>
+                            <h1 id="stat-total-videos" class="text-3xl lg:text-4xl font-bold mt-2">0</h1>
                         </div>
-                        <div class="stat-trend">
-                            <i class="material-icons">arrow_upward</i>
-                            12.5%
+                        <div class="p-2 lg:p-3 rounded-xl bg-purple-500/20 text-purple-400">
+                            <i data-lucide="video" class="w-5 lg:w-6 h-5 lg:h-6"></i>
                         </div>
                     </div>
-                    <div class="stat-value">18,245</div>
-                    <div class="stat-label">Total Video Downloads</div>
+                    <p class="text-green-400 text-sm flex items-center gap-1">
+                        <i data-lucide="arrow-up" class="w-4 h-4"></i>
+                        <span>8% from last week</span>
+                    </p>
                 </div>
-                
-                <div class="stat-card fade-in" style="animation-delay: 0.1s;">
-                    <div class="stat-header">
-                        <div class="stat-icon">
-                            <i class="material-icons" style="color: var(--secondary);">people</i>
+
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-gray-400 text-sm">Active Users</p>
+                            <h1 id="stat-active-users" class="text-3xl lg:text-4xl font-bold mt-2">0</h1>
                         </div>
-                        <div class="stat-trend">
-                            <i class="material-icons">arrow_upward</i>
-                            5.2%
-                        </div>
-                    </div>
-                    <div class="stat-value">2,847</div>
-                    <div class="stat-label">Active Users</div>
-                </div>
-                
-                <div class="stat-card fade-in" style="animation-delay: 0.2s;">
-                    <div class="stat-header">
-                        <div class="stat-icon">
-                            <i class="material-icons" style="color: var(--accent);">storage</i>
-                        </div>
-                        <div class="stat-trend down">
-                            <i class="material-icons">arrow_downward</i>
-                            2.1%
+                        <div class="p-2 lg:p-3 rounded-xl bg-green-500/20 text-green-400">
+                            <i data-lucide="users" class="w-5 lg:w-6 h-5 lg:h-6"></i>
                         </div>
                     </div>
-                    <div class="stat-value">1.2GB</div>
-                    <div class="stat-label">Storage Used</div>
-                </div>
-                
-                <div class="stat-card fade-in" style="animation-delay: 0.3s;">
-                    <div class="stat-header">
-                        <div class="stat-icon">
-                            <i class="material-icons" style="color: var(--danger);">schedule</i>
-                        </div>
-                        <div class="stat-trend">
-                            <i class="material-icons">arrow_upward</i>
-                            8.7%
-                        </div>
-                    </div>
-                    <div class="stat-value">342ms</div>
-                    <div class="stat-label">Avg. Response Time</div>
+                    <p class="text-green-400 text-sm flex items-center gap-1">
+                        <i data-lucide="arrow-up" class="w-4 h-4"></i>
+                        <span>5% from last hour</span>
+                    </p>
                 </div>
             </div>
-            
-            <!-- Charts -->
-            <div class="charts-grid">
-                <div class="chart-card fade-in">
-                    <div class="chart-header">
-                        <div class="chart-title">Download Activity</div>
-                        <div class="chart-actions">
-                            <button class="chart-btn active">Day</button>
-                            <button class="chart-btn">Week</button>
-                            <button class="chart-btn">Month</button>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-6">
+                <div class="glass p-4 lg:p-6 rounded-2xl">
+                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-4 lg:mb-6 gap-2">
+                        <h3 class="text-lg lg:text-xl font-semibold">Requests / Hour</h3>
+                        <div class="flex gap-2">
+                            <button class="text-xs px-3 py-1 rounded-lg bg-gray-800 text-gray-300">24H</button>
+                            <button class="text-xs px-3 py-1 rounded-lg bg-blue-600 text-white">7D</button>
+                            <button class="text-xs px-3 py-1 rounded-lg bg-gray-800 text-gray-300">30D</button>
                         </div>
                     </div>
-                    <div class="chart-container">
-                        <canvas id="activityChart"></canvas>
-                    </div>
+                    <canvas id="chart-requests" height="250"></canvas>
                 </div>
-                
-                <div class="chart-card fade-in" style="animation-delay: 0.1s;">
-                    <div class="chart-header">
-                        <div class="chart-title">Traffic Sources</div>
-                    </div>
-                    <div class="chart-container">
-                        <canvas id="trafficChart"></canvas>
-                    </div>
+
+                <div class="glass p-4 lg:p-6 rounded-2xl">
+                    <h3 class="text-lg lg:text-xl font-semibold mb-4 lg:mb-6">Device Distribution</h3>
+                    <canvas id="chart-devices" height="250"></canvas>
                 </div>
             </div>
-            
-            <!-- Recent Activity Table -->
-            <div class="table-card fade-in" style="animation-delay: 0.2s;">
-                <div class="table-header">
-                    <div class="table-title">Recent Downloads</div>
-                    <div class="table-actions">
-                        <button class="btn btn-secondary">
-                            <i class="material-icons">filter_list</i>
-                            Filter
-                        </button>
-                        <button class="btn btn-primary">
-                            <i class="material-icons">file_download</i>
-                            Export
-                        </button>
-                    </div>
+        </section>
+
+        <!-- ==================== REQUESTS TAB ==================== -->
+        <section id="section-requests" class="admin-section hidden">
+            <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 lg:mb-8 gap-4">
+                <div>
+                    <h2 class="text-2xl lg:text-3xl font-bold">Recent Requests</h2>
+                    <p class="text-gray-400 mt-2 text-sm lg:text-base">Monitor and analyze incoming requests to your system.</p>
                 </div>
-                
-                <div class="table-container">
-                    <table>
-                        <thead>
+                <div class="flex gap-3">
+                    <button class="flex items-center gap-2 px-3 lg:px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition text-sm lg:text-base">
+                        <i data-lucide="filter" class="w-4 h-4"></i>
+                        Filter
+                    </button>
+                    <button class="flex items-center gap-2 px-3 lg:px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 transition text-sm lg:text-base">
+                        <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+
+            <div class="glass rounded-2xl overflow-hidden">
+                <div class="responsive-table overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-800/50 text-gray-400">
                             <tr>
-                                <th>User</th>
-                                <th>Video</th>
-                                <th>Date</th>
-                                <th>Status</th>
-                                <th>Actions</th>
+                                <th class="py-3 px-4 lg:px-6 text-left">IP</th>
+                                <th class="py-3 px-4 lg:px-6 text-left">Device</th>
+                                <th class="py-3 px-4 lg:px-6 text-left hidden sm:table-cell">Browser</th>
+                                <th class="py-3 px-4 lg:px-6 text-left hidden md:table-cell">Platform</th>
+                                <th class="py-3 px-4 lg:px-6 text-left">URL</th>
+                                <th class="py-3 px-4 lg:px-6 text-left">Time</th>
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="table-requests" class="divide-y divide-gray-800">
+                            <!-- Table rows will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+                <div class="p-4 border-t border-gray-800 flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <p class="text-gray-400 text-sm">Showing 1-10 of 247 requests</p>
+                    <div class="flex gap-2">
+                        <button class="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition" title="Previous page">
+                            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                        </button>
+                        <button class="p-2 rounded-lg bg-blue-600 text-white">1</button>
+                        <button class="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition">2</button>
+                        <button class="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition">3</button>
+                        <button class="p-2 rounded-lg bg-gray-800 hover:bg-gray-700 transition" title="Next page">
+                            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== VIDEOS TAB ==================== -->
+        <section id="section-videos" class="admin-section hidden">
+            <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 lg:mb-8 gap-4">
+                <div>
+                    <h2 class="text-2xl lg:text-3xl font-bold">Videos</h2>
+                    <p class="text-gray-400 mt-2 text-sm lg:text-base">Manage and monitor video content in your system.</p>
+                </div>
+                <div class="flex gap-3">
+                    <button class="flex items-center gap-2 px-3 lg:px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition text-sm lg:text-base">
+                        <i data-lucide="upload" class="w-4 h-4"></i>
+                        Upload
+                    </button>
+                    <button onclick="clearVideos()"
+                        class="flex items-center gap-2 px-3 lg:px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 transition text-sm lg:text-base">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        Clear All Videos
+                    </button>
+                </div>
+            </div>
+
+            <div class="glass rounded-2xl overflow-hidden">
+                <div class="responsive-table overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-800/50 text-gray-400">
                             <tr>
-                                <td>@john_doe</td>
-                                <td>Twitter Video #1287</td>
-                                <td>2 minutes ago</td>
-                                <td><span class="status status-success">Completed</span></td>
-                                <td>
-                                    <button style="background: none; border: none; color: var(--primary); cursor: pointer;">
-                                        <i class="material-icons">visibility</i>
-                                    </button>
-                                </td>
+                                <th class="py-3 px-4 lg:px-6 text-left">ID</th>
+                                <th class="py-3 px-4 lg:px-6 text-left">Author</th>
+                                <th class="py-3 px-4 lg:px-6 text-left">Downloads</th>
+                                <th class="py-3 px-4 lg:px-6 text-left hidden sm:table-cell">Date</th>
+                                <th class="py-3 px-4 lg:px-6 text-left">Actions</th>
                             </tr>
-                            <tr>
-                                <td>@sarah_m</td>
-                                <td>Twitter Video #1286</td>
-                                <td>5 minutes ago</td>
-                                <td><span class="status status-success">Completed</span></td>
-                                <td>
-                                    <button style="background: none; border: none; color: var(--primary); cursor: pointer;">
-                                        <i class="material-icons">visibility</i>
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>@mike_t</td>
-                                <td>Twitter Video #1285</td>
-                                <td>12 minutes ago</td>
-                                <td><span class="status status-warning">Processing</span></td>
-                                <td>
-                                    <button style="background: none; border: none; color: var(--primary); cursor: pointer;">
-                                        <i class="material-icons">visibility</i>
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>@emily_j</td>
-                                <td>Twitter Video #1284</td>
-                                <td>18 minutes ago</td>
-                                <td><span class="status status-success">Completed</span></td>
-                                <td>
-                                    <button style="background: none; border: none; color: var(--primary); cursor: pointer;">
-                                        <i class="material-icons">visibility</i>
-                                    </button>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td>@alex_k</td>
-                                <td>Twitter Video #1283</td>
-                                <td>25 minutes ago</td>
-                                <td><span class="status status-danger">Failed</span></td>
-                                <td>
-                                    <button style="background: none; border: none; color: var(--primary); cursor: pointer;">
-                                        <i class="material-icons">visibility</i>
-                                    </button>
-                                </td>
-                            </tr>
+                        </thead>
+                        <tbody id="table-videos" class="divide-y divide-gray-800">
+                            <!-- Table rows will be populated here -->
                         </tbody>
                     </table>
                 </div>
             </div>
-        </main>
-    </div>
+        </section>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-        // Mobile menu toggle
-        document.getElementById('mobileMenuBtn').addEventListener('click', function() {
-            document.querySelector('.sidebar').classList.toggle('active');
-            document.getElementById('mobileOverlay').style.display = 'block';
+        <!-- ==================== MONITOR TAB ==================== -->
+        <section id="section-monitor" class="admin-section hidden">
+            <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 lg:mb-8 gap-4">
+                <div>
+                    <h2 class="text-2xl lg:text-3xl font-bold">Real-Time Monitoring</h2>
+                    <p class="text-gray-400 mt-2 text-sm lg:text-base">Live system performance and health metrics.</p>
+                </div>
+                <div class="flex items-center gap-2 text-sm">
+                    <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <span class="text-green-400">System Online</span>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 mb-6 lg:mb-8">
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-gray-400 text-sm">Uptime</p>
+                            <h1 id="mon-uptime" class="text-2xl lg:text-3xl font-bold mt-2">--</h1>
+                        </div>
+                        <div class="p-2 lg:p-3 rounded-xl bg-green-500/20 text-green-400">
+                            <i data-lucide="clock" class="w-5 lg:w-6 h-5 lg:h-6"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-xs">Time since last restart</p>
+                </div>
+
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-gray-400 text-sm">Requests / Sec</p>
+                            <h1 id="mon-rps" class="text-2xl lg:text-3xl font-bold mt-2">--</h1>
+                        </div>
+                        <div class="p-2 lg:p-3 rounded-xl bg-blue-500/20 text-blue-400">
+                            <i data-lucide="activity" class="w-5 lg:w-6 h-5 lg:h-6"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-xs">Current request rate</p>
+                </div>
+
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-gray-400 text-sm">API Latency</p>
+                            <h1 id="mon-latency" class="text-2xl lg:text-3xl font-bold mt-2">-- ms</h1>
+                        </div>
+                        <div class="p-2 lg:p-3 rounded-xl bg-yellow-500/20 text-yellow-400">
+                            <i data-lucide="gauge" class="w-5 lg:w-6 h-5 lg:h-6"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-xs">Average response time</p>
+                </div>
+
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-gray-400 text-sm">Event Loop Lag</p>
+                            <h1 id="mon-eventlag" class="text-2xl lg:text-3xl font-bold mt-2">--</h1>
+                        </div>
+                        <div class="p-2 lg:p-3 rounded-xl bg-purple-500/20 text-purple-400">
+                            <i data-lucide="rotate-cw" class="w-5 lg:w-6 h-5 lg:h-6"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-xs">Node.js event loop delay</p>
+                </div>
+
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-gray-400 text-sm">RAM Usage</p>
+                            <h1 id="mon-ram" class="text-xl lg:text-2xl font-bold mt-2">--</h1>
+                        </div>
+                        <div class="p-2 lg:p-3 rounded-xl bg-red-500/20 text-red-400">
+                            <i data-lucide="hard-drive" class="w-5 lg:w-6 h-5 lg:h-6"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-xs">Memory consumption</p>
+                </div>
+
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-gray-400 text-sm">CPU Load</p>
+                            <h1 id="mon-cpu" class="text-xl lg:text-2xl font-bold mt-2">--</h1>
+                        </div>
+                        <div class="p-2 lg:p-3 rounded-xl bg-orange-500/20 text-orange-400">
+                            <i data-lucide="cpu" class="w-5 lg:w-6 h-5 lg:h-6"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-xs">Processor utilization</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6">
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-gray-400 text-sm">Google Ping</p>
+                            <h1 id="mon-google" class="text-lg lg:text-xl font-bold mt-2">--</h1>
+                        </div>
+                        <div class="p-2 lg:p-3 rounded-xl bg-blue-500/20 text-blue-400">
+                            <i data-lucide="globe" class="w-5 lg:w-6 h-5 lg:h-6"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-xs">Response time to google.com</p>
+                </div>
+
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-gray-400 text-sm">Cloudflare Ping</p>
+                            <h1 id="mon-cloudflare" class="text-lg lg:text-xl font-bold mt-2">--</h1>
+                        </div>
+                        <div class="p-2 lg:p-3 rounded-xl bg-orange-500/20 text-orange-400">
+                            <i data-lucide="cloud" class="w-5 lg:w-6 h-5 lg:h-6"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-xs">Response time to cloudflare.com</p>
+                </div>
+
+                <div class="stat-card glass p-4 lg:p-6 rounded-2xl">
+                    <div class="flex justify-between items-start mb-4">
+                        <div>
+                            <p class="text-gray-400 text-sm">Twitter Ping</p>
+                            <h1 id="mon-twitter" class="text-lg lg:text-xl font-bold mt-2">--</h1>
+                        </div>
+                        <div class="p-2 lg:p-3 rounded-xl bg-sky-500/20 text-sky-400">
+                            <i data-lucide="message-circle" class="w-5 lg:w-6 h-5 lg:h-6"></i>
+                        </div>
+                    </div>
+                    <p class="text-gray-400 text-xs">Response time to twitter.com</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== LOGS TAB ==================== -->
+        <section id="section-logs" class="admin-section hidden">
+            <div class="flex flex-col lg:flex-row lg:justify-between lg:items-center mb-6 lg:mb-8 gap-4">
+                <div>
+                    <h2 class="text-2xl lg:text-3xl font-bold">System Logs</h2>
+                    <p class="text-gray-400 mt-2 text-sm lg:text-base">Monitor system events and error logs in real-time.</p>
+                </div>
+                <div class="flex gap-3">
+                    <button class="flex items-center gap-2 px-3 lg:px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 transition text-sm lg:text-base">
+                        <i data-lucide="download" class="w-4 h-4"></i>
+                        Export
+                    </button>
+                    <button class="flex items-center gap-2 px-3 lg:px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 transition text-sm lg:text-base">
+                        <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        Clear Logs
+                    </button>
+                </div>
+            </div>
+
+            <div class="glass rounded-2xl overflow-hidden">
+                <div class="p-4 border-b border-gray-800 flex gap-2 overflow-x-auto">
+                    <button class="text-sm px-3 py-1 rounded-lg bg-blue-600 text-white whitespace-nowrap">All</button>
+                    <button class="text-sm px-3 py-1 rounded-lg bg-gray-800 text-gray-300 whitespace-nowrap">Info</button>
+                    <button class="text-sm px-3 py-1 rounded-lg bg-gray-800 text-gray-300 whitespace-nowrap">Warnings</button>
+                    <button class="text-sm px-3 py-1 rounded-lg bg-gray-800 text-gray-300 whitespace-nowrap">Errors</button>
+                </div>
+                <div class="h-64 lg:h-96 overflow-y-auto p-4 font-mono text-sm" id="logs-box">
+                    <p class="text-gray-400">Loading logs...</p>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+
+<script>
+    lucide.createIcons();
+    
+    // Mobile sidebar toggle
+    document.getElementById('mobile-menu-toggle').addEventListener('click', function() {
+        document.getElementById('mobile-sidebar').classList.toggle('open');
+    });
+    
+    // Close mobile sidebar when clicking outside
+    document.addEventListener('click', function(event) {
+        const sidebar = document.getElementById('mobile-sidebar');
+        const toggle = document.getElementById('mobile-menu-toggle');
+        
+        if (!sidebar.contains(event.target) && !toggle.contains(event.target) && sidebar.classList.contains('open')) {
+            sidebar.classList.remove('open');
+        }
+    });
+    
+    // Update current time
+    function updateTime() {
+        const now = new Date();
+        document.getElementById('current-time').textContent = now.toLocaleTimeString();
+        document.getElementById('mobile-current-time').textContent = now.toLocaleTimeString();
+    }
+    
+    setInterval(updateTime, 1000);
+    updateTime();
+    
+    // Tab switching function
+    function switchTab(tabName) {
+        // Hide all sections
+        document.querySelectorAll('.admin-section').forEach(section => {
+            section.classList.add('hidden');
         });
         
-        document.getElementById('mobileOverlay').addEventListener('click', function() {
-            document.querySelector('.sidebar').classList.remove('active');
-            this.style.display = 'none';
+        // Remove active class from all nav items
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
         });
         
-        // Initialize charts
-        document.addEventListener('DOMContentLoaded', function() {
-            // Activity Chart
-            const activityCtx = document.getElementById('activityChart').getContext('2d');
-            new Chart(activityCtx, {
-                type: 'line',
-                data: {
-                    labels: ['6AM', '9AM', '12PM', '3PM', '6PM', '9PM'],
-                    datasets: [{
-                        label: 'Downloads',
-                        data: [12, 19, 8, 15, 22, 18],
-                        borderColor: '#6366f1',
-                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
-                        tension: 0.4,
-                        fill: true
-                    }]
+        // Show selected section
+        document.getElementById(`section-${tabName}`).classList.remove('hidden');
+        
+        // Set active class on selected nav item (both desktop and mobile)
+        document.getElementById(`nav-${tabName}`).classList.add('active');
+        document.getElementById(`mobile-nav-${tabName}`).classList.add('active');
+        
+        // Close mobile sidebar after selection
+        document.getElementById('mobile-sidebar').classList.remove('open');
+    }
+    
+    // Demo data for charts (replace with actual data from your backend)
+    function initializeCharts() {
+        // Requests chart
+        const requestsCtx = document.getElementById('chart-requests').getContext('2d');
+        new Chart(requestsCtx, {
+            type: 'line',
+            data: {
+                labels: ['12AM', '3AM', '6AM', '9AM', '12PM', '3PM', '6PM', '9PM'],
+                datasets: [{
+                    label: 'Requests',
+                    data: [12, 19, 3, 5, 2, 3, 15, 8],
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            display: false
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
                         }
                     },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.1)'
-                            },
-                            ticks: {
-                                color: '#94a3b8'
-                            }
-                        },
-                        x: {
-                            grid: {
-                                color: 'rgba(255, 255, 255, 0.1)'
-                            },
-                            ticks: {
-                                color: '#94a3b8'
-                            }
+                    x: {
+                        grid: {
+                            color: 'rgba(255, 255, 255, 0.1)'
                         }
                     }
                 }
-            });
-            
-            // Traffic Chart
-            const trafficCtx = document.getElementById('trafficChart').getContext('2d');
-            new Chart(trafficCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Direct', 'Social Media', 'Search', 'Referral'],
-                    datasets: [{
-                        data: [45, 25, 20, 10],
-                        backgroundColor: [
-                            '#6366f1',
-                            '#10b981',
-                            '#f59e0b',
-                            '#ef4444'
-                        ],
-                        borderWidth: 0
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                color: '#94a3b8',
-                                padding: 20
-                            }
-                        }
-                    }
-                }
-            });
+            }
         });
-    </script>
+        
+        // Devices chart
+        const devicesCtx = document.getElementById('chart-devices').getContext('2d');
+        new Chart(devicesCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Desktop', 'Mobile', 'Tablet'],
+                datasets: [{
+                    data: [60, 30, 10],
+                    backgroundColor: [
+                        '#3b82f6',
+                        '#8b5cf6',
+                        '#10b981'
+                    ],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+    
+    // Initialize charts when the page loads
+    document.addEventListener('DOMContentLoaded', initializeCharts);
+</script>
+
+<script src="admin.js"></script>
+
 </body>
 </html>
