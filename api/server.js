@@ -14,15 +14,21 @@ const path = require("path");
 const axios = require("axios");
 const cheerio = require("cheerio");
 const userAgent = require("user-agents");
+const { createClient } = require("@supabase/supabase-js");
+
+const Monitor = require("./monitor.js"); // 🟦 Monitoring Module
 
 const app = express();
-const PUBLIC = path.join(__dirname, "public");
+const PUBLIC = path.join(__dirname, "../public");
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(PUBLIC));
+
+// Supabase
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_KEY);
 
 // -------------------------------------------------------------------------------
 // DEV METADATA (added to every response)
@@ -38,6 +44,94 @@ function devInfo(extra = {}) {
     ...extra
   };
 }
+
+
+// -------------------------------------------------------------------------------
+// BAN SYSTEM (Global check before all endpoints)
+// -------------------------------------------------------------------------------
+app.use(async (req, res, next) => {
+  try {
+    const ip =
+      req.headers["x-forwarded-for"]?.split(",")[0] ||
+      req.ip ||
+      "unknown";
+
+    const { data } = await supabase
+      .from("bans")
+      .select("*")
+      .eq("ip_address", ip)
+      .maybeSingle();
+
+    if (data) {
+      return res.status(403).json(
+        devInfo({
+          success: false,
+          error: "Your IP has been banned."
+        })
+      );
+    }
+  } catch {}
+
+  next();
+});
+
+
+// -------------------------------------------------------------------------------
+// GLOBAL REQUEST MONITORING
+// -------------------------------------------------------------------------------
+app.use(async (req, res, next) => {
+  Monitor.trackRequest();
+  next();
+});
+
+
+// -------------------------------------------------------------------------------
+// Supabase Request Logging
+// -------------------------------------------------------------------------------
+function getClientInfo(req) {
+  const ua = req.headers["user-agent"] || "Unknown";
+
+  return {
+    ip_address:
+      req.headers["x-forwarded-for"]?.split(",")[0] ||
+      req.ip ||
+      "unknown",
+
+    user_agent: ua,
+    device_type: ua.includes("Mobile")
+      ? "Mobile"
+      : ua.includes("Tablet")
+      ? "Tablet"
+      : "Desktop",
+
+    browser: ua.includes("Firefox")
+      ? "Firefox"
+      : ua.includes("Chrome")
+      ? "Chrome"
+      : ua.includes("Safari")
+      ? "Safari"
+      : "Other",
+
+    platform: ua.includes("Windows")
+      ? "Windows"
+      : ua.includes("Android")
+      ? "Android"
+      : ua.includes("Mac")
+      ? "Mac"
+      : "Other"
+  };
+}
+
+async function logRequest(req, url, endpoint) {
+  const info = getClientInfo(req);
+
+  await supabase.from("requests").insert({
+    ...info,
+    twitter_url: url,
+    endpoint
+  });
+}
+
 
 // -------------------------------------------------------------------------------
 // Twitsave functions
@@ -58,9 +152,9 @@ function parseTwitsave(html, url) {
 
   const result = {
     tweetInfo: {
-      author: $('a[href*="twitter.com"]').first().text().trim() || 'Unknown',
-      text: $("p.m-2").text().trim() || '',
-      date: $("a.text-xs").first().text().trim() || ''
+      author: $('a[href*="twitter.com"]').first().text().trim(),
+      text: $("p.m-2").text().trim(),
+      date: $("a.text-xs").first().text().trim()
     },
     downloadLinks: [],
     thumbnail: $("video").attr("poster") || null,
@@ -68,162 +162,57 @@ function parseTwitsave(html, url) {
   };
 
   $("a[href*='/download?file=']").each((i, el) => {
-    const $link = $(el);
-    const href = $link.attr('href');
-    const text = $link.find('.truncate').text().trim();
-    
-    const resolutionMatch = text.match(/Resolution:\s*(\d+x\d+)/i) || text.match(/(\d+x\d+)/);
-    const resolution = resolutionMatch ? resolutionMatch[1] : 'unknown';
-    
-    let quality = 'unknown';
-    if (resolution.includes('1688x720') || resolution.includes('1280x720') || resolution.includes('1920x1080')) {
-      quality = 'hd';
-    } else if (resolution.includes('844x360') || resolution.includes('640x360')) {
-      quality = 'sd';
-    } else if (resolution.includes('632x270') || resolution.includes('480x270')) {
-      quality = 'low';
-    }
-
     result.downloadLinks.push({
-      url: "https://twitsave.com" + href,
-      quality: quality,
-      resolution: resolution,
-      type: "mp4",
-      source: "twitsave"
+      url: "https://twitsave.com" + $(el).attr("href"),
+      type: "mp4"
     });
   });
 
   return result;
 }
 
-// Simple in-memory storage (for Vercel compatibility)
-let memoryDB = {
-  requests: [],
-  videos: [],
-  stats: {
-    totalRequests: 0,
-    totalVideos: 0
-  }
-};
 
-// Function to get client IP and device details
-function getClientInfo(req) {
-  const ip = req.headers['x-forwarded-for'] || 
-             req.headers['x-real-ip'] || 
-             req.connection.remoteAddress || 
-             req.socket.remoteAddress ||
-             (req.connection.socket ? req.connection.socket.remoteAddress : null);
+// -------------------------------------------------------------------------------
+// Save Video to Supabase
+// -------------------------------------------------------------------------------
+async function storeVideo(tweetId, parsed) {
+  const exists = await supabase
+    .from("videos")
+    .select("*")
+    .eq("tweet_id", tweetId)
+    .maybeSingle();
 
-  const userAgent = req.headers['user-agent'] || 'Unknown';
-  
-  let deviceType = 'Desktop';
-  let browser = 'Unknown';
-  let platform = 'Unknown';
+  if (exists.data) {
+    await supabase
+      .from("videos")
+      .update({
+        total_downloads: exists.data.total_downloads + 1,
+        last_fetched: new Date()
+      })
+      .eq("tweet_id", tweetId);
+  } else {
+    await supabase.from("videos").insert({
+      tweet_id: tweetId,
+      author: parsed.tweetInfo.author,
+      tweet_text: parsed.tweetInfo.text,
+      tweet_date: parsed.tweetInfo.date,
+      thumbnail_url: parsed.thumbnail,
+      total_downloads: 1
+    });
 
-  if (userAgent.includes('Mobile')) deviceType = 'Mobile';
-  else if (userAgent.includes('Tablet')) deviceType = 'Tablet';
-
-  if (userAgent.includes('Chrome')) browser = 'Chrome';
-  else if (userAgent.includes('Firefox')) browser = 'Firefox';
-  else if (userAgent.includes('Safari')) browser = 'Safari';
-  else if (userAgent.includes('Edge')) browser = 'Edge';
-
-  if (userAgent.includes('Windows')) platform = 'Windows';
-  else if (userAgent.includes('Mac')) platform = 'Mac';
-  else if (userAgent.includes('Linux')) platform = 'Linux';
-  else if (userAgent.includes('Android')) platform = 'Android';
-  else if (userAgent.includes('iOS')) platform = 'iOS';
-
-  return {
-    ip: ip ? ip.split(',')[0].trim() : 'unknown',
-    userAgent,
-    deviceType,
-    browser,
-    platform
-  };
-}
-
-// Function to log request to database
-async function logRequest(req, twitterUrl, endpoint) {
-  const clientInfo = getClientInfo(req);
-  
-  try {
-    const requestData = {
-      ip_address: clientInfo.ip,
-      user_agent: clientInfo.userAgent,
-      device_type: clientInfo.deviceType,
-      browser: clientInfo.browser,
-      platform: clientInfo.platform,
-      twitter_url: twitterUrl,
-      endpoint: endpoint,
-      timestamp: new Date().toISOString()
-    };
-
-    memoryDB.requests.push(requestData);
-    memoryDB.stats.totalRequests = memoryDB.requests.length;
-    
-    // Keep only last 1000 requests to prevent memory issues
-    if (memoryDB.requests.length > 1000) {
-      memoryDB.requests = memoryDB.requests.slice(-1000);
-    }
-    
-  } catch (error) {
-    console.error('Error logging request:', error);
+    await supabase.rpc("increment_stat", { field_name: "total_videos" });
   }
 }
 
-// Function to store video data in database
-async function storeVideoData(tweetId, result) {
-  try {
-    const existingVideoIndex = memoryDB.videos.findIndex(v => v.tweet_id === tweetId);
-    
-    if (existingVideoIndex !== -1) {
-      // Update existing video
-      memoryDB.videos[existingVideoIndex].total_downloads += 1;
-      memoryDB.videos[existingVideoIndex].last_fetched = new Date().toISOString();
-    } else {
-      // Add new video
-      memoryDB.videos.push({
-        tweet_id: tweetId,
-        author: result.tweetInfo.author,
-        tweet_text: result.tweetInfo.text,
-        tweet_date: result.tweetInfo.date,
-        thumbnail_url: result.thumbnail,
-        total_downloads: 1,
-        first_fetched: new Date().toISOString(),
-        last_fetched: new Date().toISOString()
-      });
-      memoryDB.stats.totalVideos = memoryDB.videos.length;
-    }
-    
-    // Keep only last 500 videos to prevent memory issues
-    if (memoryDB.videos.length > 500) {
-      memoryDB.videos = memoryDB.videos.slice(-500);
-    }
-    
-  } catch (error) {
-    console.error('Error storing video data:', error);
-  }
-}
 
 // -------------------------------------------------------------------------------
 // STATIC ROUTES (SPA)
 // -------------------------------------------------------------------------------
-app.get("/", (req, res) => {
-  res.sendFile(path.join(PUBLIC, "index.html"));
-});
+app.get("/", (_, res) => res.sendFile(path.join(PUBLIC, "index.html")));
+app.get("/admin", (_, res) => res.sendFile(path.join(PUBLIC, "admin.html")));
+app.get("/docs", (_, res) => res.sendFile(path.join(PUBLIC, "docs.html")));
+app.get("/playground", (_, res) => res.sendFile(path.join(PUBLIC, "playground.html")));
 
-app.get("/admin", (req, res) => {
-  res.sendFile(path.join(PUBLIC, "admin.html"));
-});
-
-app.get("/docs", (req, res) => {
-  res.sendFile(path.join(PUBLIC, "docs.html"));
-});
-
-app.get("/playground", (req, res) => {
-  res.sendFile(path.join(PUBLIC, "playground.html"));
-});
 
 // -------------------------------------------------------------------------------
 // /api/download
@@ -235,47 +224,35 @@ app.get("/api/download", async (req, res) => {
     const { url } = req.query;
 
     if (!url) {
-      return res.status(400).json(
+      return res.json(
         devInfo({
           success: false,
-          error: "Twitter URL is required"
-        })
-      );
-    }
-
-    if (!url.includes('twitter.com/') && !url.includes('x.com/')) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid Twitter URL. Must be from twitter.com or x.com',
-        author: '@m2hgamerz',
-        telegram: 'https://t.me/m2hgamerz'
-      });
-    }
-
-    const tweetId = getTweetId(url);
-    if (!tweetId) {
-      return res.status(400).json(
-        devInfo({
-          success: false,
-          error: "Could not extract tweet ID from URL"
+          error: "Twitter URL required"
         })
       );
     }
 
     await logRequest(req, url, "/api/download");
 
-    const response = await axios.get(
+    const tweetId = getTweetId(url);
+    if (!tweetId) {
+      return res.json(
+        devInfo({
+          success: false,
+          error: "Invalid tweet URL"
+        })
+      );
+    }
+
+    const html = await axios.get(
       `https://twitsave.com/info?url=${encodeURIComponent(url)}`,
-      { 
-        headers: getTwitsaveHeaders(),
-        timeout: 15000
-      }
+      { headers: getTwitsaveHeaders() }
     );
 
-    const parsed = parseTwitsave(response.data, url);
+    const parsed = parseTwitsave(html.data, url);
 
     if (!parsed.downloadLinks.length) {
-      return res.status(404).json(
+      return res.json(
         devInfo({
           success: false,
           error: "No downloadable videos found"
@@ -283,142 +260,94 @@ app.get("/api/download", async (req, res) => {
       );
     }
 
-    await storeVideoData(tweetId, parsed);
+    await storeVideo(tweetId, parsed);
 
     const latency = Date.now() - start;
+    Monitor.trackLatency(latency);
 
     return res.json(
       devInfo({
         success: true,
-        twitterUrl: url,
-        tweetId: tweetId,
-        tweetInfo: parsed.tweetInfo,
-        downloadLinks: parsed.downloadLinks,
-        totalVideosFound: parsed.downloadLinks.length,
-        thumbnail: parsed.thumbnail,
-        videoPreview: parsed.preview,
+        tweetId,
+        ...parsed,
         _ping: latency
       })
     );
-  } catch (error) {
-    console.error('API Error:', error.message);
-    
-    let errorMessage = error.message;
-    let statusCode = 500;
-    
-    if (error.response) {
-      statusCode = error.response.status;
-      if (statusCode === 404) errorMessage = 'Tweet not found';
-      else if (statusCode === 403) errorMessage = 'Access denied';
-      else if (statusCode === 429) errorMessage = 'Rate limited';
-    } else if (error.code === 'ENOTFOUND') {
-      errorMessage = 'Cannot connect to Twitsave';
-    }
-    
-    return res.status(statusCode).json(
+  } catch (e) {
+    Monitor.logError(e);
+
+    return res.json(
       devInfo({
         success: false,
-        error: errorMessage
+        error: e.message
       })
     );
   }
 });
+
 
 // -------------------------------------------------------------------------------
 // API STATS
 // -------------------------------------------------------------------------------
 app.get("/api/stats", async (req, res) => {
-  try {
-    await logRequest(req, 'STATS_REQUEST', '/api/stats');
+  const { data: stats } = await supabase
+    .from("stats")
+    .select("*")
+    .eq("id", 1)
+    .maybeSingle();
 
-    // Calculate device stats
-    const deviceCounts = {};
-    memoryDB.requests.forEach(req => {
-      deviceCounts[req.device_type] = (deviceCounts[req.device_type] || 0) + 1;
-    });
+  const videos = await supabase.from("videos").select("*");
+  const reqs = await supabase.from("requests").select("*");
 
-    const deviceStats = Object.entries(deviceCounts).map(([device_type, count]) => ({
-      device_type,
-      count
-    }));
-
-    // Get popular videos (top 10 by downloads)
-    const popularVideos = [...memoryDB.videos]
-      .sort((a, b) => (b.total_downloads || 0) - (a.total_downloads || 0))
-      .slice(0, 10)
-      .map(video => ({
-        tweet_id: video.tweet_id,
-        author: video.author,
-        total_downloads: video.total_downloads || 0
-      }));
-
-    const stats = {
-      totalRequests: memoryDB.stats.totalRequests || 0,
-      totalVideos: memoryDB.stats.totalVideos || 0,
-      popularVideos: popularVideos,
-      deviceStats: deviceStats,
-      memoryUsage: {
-        requests: memoryDB.requests.length,
-        videos: memoryDB.videos.length
+  res.json(
+    devInfo({
+      success: true,
+      statistics: {
+        totalRequests: stats?.total_requests || 0,
+        totalVideos: stats?.total_videos || 0,
+        uniqueIPs: new Set(reqs.data?.map(r => r.ip_address)).size,
+        memoryUsage: process.memoryUsage()
       }
-    };
-
-    res.json(
-      devInfo({
-        success: true,
-        statistics: stats,
-        database: 'memory',
-        note: 'Statistics reset on server restart (serverless environment)'
-      })
-    );
-
-  } catch (error) {
-    console.error('Stats error:', error);
-    res.status(500).json(
-      devInfo({
-        success: false,
-        error: 'Failed to fetch statistics'
-      })
-    );
-  }
+    })
+  );
 });
 
-// -------------------------------------------------------------------------------
-// HEALTH CHECK
-// -------------------------------------------------------------------------------
-app.get("/health", async (req, res) => {
-  try {
-    await logRequest(req, 'HEALTH_CHECK', '/health');
 
-    const healthInfo = {
-      status: 'OK',
-      timestamp: new Date().toISOString(),
-      database: {
-        type: 'memory',
-        connected: true,
-        totalRequests: memoryDB.stats.totalRequests || 0,
-        totalVideos: memoryDB.stats.totalVideos || 0
-      },
-      service: 'Twitter Video Download API',
-      environment: process.env.NODE_ENV || 'development'
-    };
+// -------------------------------------------------------------------------------
+// FULL HEALTH CHECK + MONITORING DATA
+// -------------------------------------------------------------------------------
+app.get("/api/health-full", async (req, res) => {
+  const start = Date.now();
+  const monitor = await Monitor.getMonitoringData();
+  const latency = Date.now() - start;
 
-    res.json(devInfo(healthInfo));
-  } catch (error) {
-    console.error('Health check error:', error);
-    res.status(500).json(
-      devInfo({
-        status: 'ERROR',
-        timestamp: new Date().toISOString(),
-        database: {
-          type: 'memory',
-          connected: false
-        },
-        service: 'Twitter Video Download API'
-      })
-    );
-  }
+  res.json(
+    devInfo({
+      success: true,
+      health: "OK",
+      monitor,
+      _ping: latency
+    })
+  );
 });
+
+
+// -------------------------------------------------------------------------------
+// SIMPLE UPTIME
+// -------------------------------------------------------------------------------
+app.get("/api/uptime", async (req, res) => {
+  const monitor = await Monitor.getMonitoringData();
+
+  res.json(
+    devInfo({
+      success: true,
+      uptime: monitor.uptime_str,
+      system: monitor.system,
+      event_loop_lag_ms: monitor.event_loop_lag_ms
+    })
+  );
+});
+
 
 // -------------------------------------------------------------------------------
 // PING
@@ -435,46 +364,137 @@ app.get("/api/ping", (req, res) => {
   );
 });
 
-// -------------------------------------------------------------------------------
-// 404 handler
-// -------------------------------------------------------------------------------
-app.use('*', (req, res) => {
-  res.status(404).json(
-    devInfo({
-      success: false,
-      error: 'Endpoint not found'
-    })
-  );
-});
 
 // -------------------------------------------------------------------------------
-// Error handling middleware
+// ADMIN AUTH MIDDLEWARE
 // -------------------------------------------------------------------------------
-app.use((error, req, res, next) => {
-  console.error('Unhandled error:', error);
-  res.status(500).json(
-    devInfo({
-      success: false,
-      error: 'Internal server error'
-    })
-  );
-});
+function adminAuth(req, res, next) {
+  const token = req.headers.authorization?.split(" ")[1];
 
-// -------------------------------------------------------------------------------
-// For Vercel deployment
-// -------------------------------------------------------------------------------
-if (process.env.NODE_ENV !== "production") {
-  const PORT = process.env.PORT || 3000;
-  app.listen(PORT, () => {
-    console.log(`🚀 Twitter Video API running on port ${PORT}`);
-    console.log(`📊 API Playground: http://localhost:${PORT}/playground`);
-    console.log(`📚 Documentation: http://localhost:${PORT}/docs`);
-    console.log(`❤️  Health Check: http://localhost:${PORT}/health`);
-    console.log(`👤 Author: @m2hgamerz`);
-    console.log(`📱 Telegram: https://t.me/m2hgamerz`);
-    console.log(`🗄️  Database: In-memory (Serverless compatible)`);
-  });
+  if (!token || token !== process.env.ADMIN_KEY) {
+    return res.status(401).json(
+      devInfo({
+        success: false,
+        error: "Unauthorized"
+      })
+    );
+  }
+
+  next();
 }
 
-// Export for Vercel
+
+// -------------------------------------------------------------------------------
+// ADMIN: FULL DATA
+// -------------------------------------------------------------------------------
+app.get("/api/admin/data", adminAuth, async (req, res) => {
+  const stats = await supabase.from("stats").select("*").eq("id", 1).maybeSingle();
+  const videos = await supabase.from("videos").select("*");
+  const requests = await supabase.from("requests").select("*");
+  const monitor = await Monitor.getMonitoringData();
+
+  res.json(
+    devInfo({
+      success: true,
+      stats: stats.data,
+      videos: videos.data,
+      requests: requests.data,
+      monitor
+    })
+  );
+});
+
+
+// -------------------------------------------------------------------------------
+// ADMIN: BAN
+// -------------------------------------------------------------------------------
+app.post("/api/admin/ban", adminAuth, async (req, res) => {
+  const { ip } = req.body;
+
+  if (!ip)
+    return res.json(devInfo({ success: false, error: "IP required" }));
+
+  await supabase.from("bans").insert({ ip_address: ip });
+
+  res.json(devInfo({ success: true, message: "IP banned" }));
+});
+
+
+// -------------------------------------------------------------------------------
+// ADMIN: RESET STATS
+// -------------------------------------------------------------------------------
+app.post("/api/admin/reset-stats", adminAuth, async (req, res) => {
+  await supabase
+    .from("stats")
+    .update({ total_requests: 0, total_videos: 0 })
+    .eq("id", 1);
+
+  res.json(devInfo({ success: true }));
+});
+
+
+// -------------------------------------------------------------------------------
+// ADMIN: CLEAR REQUESTS
+// -------------------------------------------------------------------------------
+app.post("/api/admin/clear-requests", adminAuth, async (req, res) => {
+  await supabase.from("requests").delete().neq("id", 0);
+
+  res.json(devInfo({ success: true }));
+});
+
+
+// -------------------------------------------------------------------------------
+// ADMIN: CLEAR VIDEOS
+// -------------------------------------------------------------------------------
+app.post("/api/admin/clear-videos", adminAuth, async (req, res) => {
+  await supabase.from("videos").delete().neq("id", 0);
+  await supabase.from("stats").update({ total_videos: 0 }).eq("id", 1);
+
+  res.json(devInfo({ success: true }));
+});
+
+
+// -------------------------------------------------------------------------------
+// ADMIN: LOGS
+// -------------------------------------------------------------------------------
+app.get("/api/admin/logs", adminAuth, async (req, res) => {
+  const { data } = await supabase
+    .from("logs")
+    .select("*")
+    .order("id", { ascending: false })
+    .limit(100);
+
+  res.json(
+    devInfo({
+      success: true,
+      logs: data
+        ? data.map(l => `[${l.created_at}] ${l.message}`)
+        : []
+    })
+  );
+});
+
+
+// -------------------------------------------------------------------------------
+// GLOBAL HEALTH
+// -------------------------------------------------------------------------------
+app.get("/health", (_, res) => {
+  res.json(
+    devInfo({
+      success: true,
+      status: "OK"
+    })
+  );
+});
+
+
+// -------------------------------------------------------------------------------
+// LOCAL SERVER
+// -------------------------------------------------------------------------------
+if (process.env.NODE_ENV !== "production") {
+  app.listen(3000, () =>
+    console.log("🔥 Local Server: http://localhost:3000")
+  );
+}
+
 module.exports = app;
