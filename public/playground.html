@@ -61,8 +61,8 @@
                         <button class="endpoint-btn" data-endpoint="/api/stats">
                             <i class="fas fa-chart-bar"></i> Statistics
                         </button>
-                        <button class="endpoint-btn" data-endpoint="/api/requests/recent">
-                            <i class="fas fa-history"></i> Recent Requests
+                        <button class="endpoint-btn" data-endpoint="/health">
+                            <i class="fas fa-heartbeat"></i> Health Check
                         </button>
                     </div>
                 </div>
@@ -103,10 +103,10 @@
                 </div>
                 
                 <!-- Video Preview -->
-                <div class="video-preview" id="videoPreview">
+                <div class="video-preview" id="videoPreview" style="display: none;">
                     <h3><i class="fas fa-play-circle"></i> Video Preview</h3>
                     <div class="preview-container">
-                        <img id="previewThumbnail" class="preview-thumbnail" alt="Video thumbnail">
+                        <img id="previewThumbnail" class="preview-thumbnail" alt="Video thumbnail" style="display: none;">
                         <div class="preview-info">
                             <h4 id="previewAuthor">Author Name</h4>
                             <p id="previewText">Tweet content will appear here...</p>
@@ -141,10 +141,10 @@ curl -X GET "https://twitter-api-m2h.vercel.app/api/download?url=TWITTER_URL"
 # Get API Statistics
 curl -X GET "https://twitter-api-m2h.vercel.app/api/stats"
 
-# Get Recent Requests
-curl -X GET "https://twitter-api-m2h.vercel.app/api/requests/recent"</code></pre>
+# Health Check
+curl -X GET "https://twitter-api-m2h.vercel.app/health"</code></pre>
 
-                <pre class="example-code" id="javascript-example"><code>// Download Twitter Video
+                <pre class="example-code" id="javascript-example" style="display: none;"><code>// Download Twitter Video
 async function downloadTwitterVideo(url) {
   try {
     const response = await fetch(`https://twitter-api-m2h.vercel.app/api/download?url=${encodeURIComponent(url)}`);
@@ -159,7 +159,7 @@ async function downloadTwitterVideo(url) {
 // Example usage
 downloadTwitterVideo('TWITTER_URL');</code></pre>
 
-                <pre class="example-code" id="python-example"><code>import requests
+                <pre class="example-code" id="python-example" style="display: none;"><code>import requests
 
 def download_twitter_video(url):
     try:
@@ -176,7 +176,7 @@ def download_twitter_video(url):
 # Example usage
 download_twitter_video("TWITTER_URL")</code></pre>
 
-                <pre class="example-code" id="php-example"><code>&lt;?php
+                <pre class="example-code" id="php-example" style="display: none;"><code>&lt;?php
 
 function downloadTwitterVideo($url) {
     $api_url = "https://twitter-api-m2h.vercel.app/api/download?url=" . urlencode($url);
@@ -191,7 +191,7 @@ print_r($result);
 
 ?&gt;</code></pre>
 
-                <pre class="example-code" id="nodejs-example"><code>const axios = require('axios');
+                <pre class="example-code" id="nodejs-example" style="display: none;"><code>const axios = require('axios');
 
 async function downloadTwitterVideo(url) {
   try {
@@ -313,21 +313,30 @@ downloadTwitterVideo('TWITTER_URL');</code></pre>
             // Add syntax highlighting
             applyJSONSyntaxHighlighting(responseOutput);
 
-            // Show video preview if it's a download response
+            // Show video preview if it's a download response with success
             if (currentEndpoint === '/api/download' && data.success && data.downloadLinks) {
                 showVideoPreview(data);
+            } else if (currentEndpoint === '/api/download' && !data.success) {
+                // Show error message from API
+                document.getElementById('videoPreview').style.display = 'none';
+                showError(data.error || 'Failed to fetch video');
             } else {
                 document.getElementById('videoPreview').style.display = 'none';
             }
 
         } catch (error) {
+            const endTime = performance.now();
+            const responseTime = Math.round(endTime - startTime);
+            
             responseOutput.classList.remove('loading');
             responseOutput.textContent = JSON.stringify({
-                error: 'Request failed: ' + error.message
+                error: 'Request failed: ' + error.message,
+                note: 'This might be a network issue or the API might be temporarily unavailable'
             }, null, 2);
             
             document.getElementById('statusCode').textContent = 'Error';
             document.getElementById('statusCode').className = 'status-error';
+            document.getElementById('responseTime').textContent = responseTime;
             document.getElementById('videoPreview').style.display = 'none';
             
             // Apply syntax highlighting to error response too
@@ -362,9 +371,14 @@ downloadTwitterVideo('TWITTER_URL');</code></pre>
                 linkElement.className = 'download-link';
                 linkElement.target = '_blank';
                 linkElement.rel = 'noopener';
+                
+                // FIX: Handle cases where quality might be undefined
+                const quality = link.quality || 'unknown';
+                const resolution = link.resolution || 'unknown';
+                
                 linkElement.innerHTML = `
                     <i class="fas fa-download"></i>
-                    Download ${link.quality.toUpperCase()} (${link.resolution})
+                    Download ${quality.toUpperCase()} (${resolution})
                 `;
                 downloadLinks.appendChild(linkElement);
             });
